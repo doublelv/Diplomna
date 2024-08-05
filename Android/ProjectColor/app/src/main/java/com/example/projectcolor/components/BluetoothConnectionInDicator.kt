@@ -48,16 +48,15 @@ fun BluetoothConnectionIndicator(
     val activity = context as Activity
     val bluetoothManager = remember { BluetoothManager(context) }
 
-    var showPairedDevicesDialog by remember { mutableStateOf(false) }
-    var showDiscoveredDevicesDialog by remember { mutableStateOf(false) }
+    var showDevicesDialog by remember { mutableStateOf(false) }
 
     val enableBluetoothLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()
     ) { result ->
         if (result.resultCode == Activity.RESULT_OK) {
             if (bluetoothManager.hasPermissions()) {
-                showDiscoveredDevicesDialog = true
                 bluetoothManager.startDiscovery()
+                showDevicesDialog = true
             }
         }
     }
@@ -68,9 +67,7 @@ fun BluetoothConnectionIndicator(
         modifier = modifier
             .size(150.dp)
             .clip(RoundedCornerShape(25.dp))
-            .background(
-                color = if (isConnected) Color.Green else Color.Red
-            )
+            .background(color = if (isConnected) Color.Green else Color.Red)
             .clickable {
                 if (isConnected) {
                     onDisconnectClick()
@@ -83,9 +80,8 @@ fun BluetoothConnectionIndicator(
                         if (!bluetoothManager.hasPermissions()) {
                             bluetoothManager.requestPermissions(activity, 1001)
                         } else {
-                            showPairedDevicesDialog = true
-                            showDiscoveredDevicesDialog = true
                             bluetoothManager.startDiscovery()
+                            showDevicesDialog = true
                         }
                     } else {
                         bluetoothManager.enableBluetooth(enableBluetoothLauncher)
@@ -107,82 +103,16 @@ fun BluetoothConnectionIndicator(
             )
         }
 
-//        if (showPairedDevicesDialog) {
-//            PairedDevicesDialog(
-//                pairedDevices = bluetoothManager.getPairedDevices(),
-//                onDismissRequest = { showPairedDevicesDialog = false },
-//                onConnectClick = { device ->
-//                    onConnectClick(device)
-//                    showPairedDevicesDialog = false
-//                }
-//            )
-//        }
-//
-//        if (showDiscoveredDevicesDialog) {
-//            DiscoveredDevicesDialog(
-//                discoveredDevices = discoveredDevices,
-//                onDismissRequest = { showDiscoveredDevicesDialog = false },
-//                onConnectClick = { device ->
-//                    onConnectClick(device)
-//                    showDiscoveredDevicesDialog = false
-//                }
-//            )
-//        }
-
-        if (showPairedDevicesDialog && showDiscoveredDevicesDialog) {
+        if (showDevicesDialog) {
             DevicesDialog(
                 pairedDevices = bluetoothManager.getPairedDevices(),
                 discoveredDevices = discoveredDevices,
-                onDismissRequest = { showPairedDevicesDialog = false },
+                onDismissRequest = { showDevicesDialog = false },
                 onConnectClick = { device ->
                     onConnectClick(device)
-                    showPairedDevicesDialog = false
+                    showDevicesDialog = false
                 }
             )
-        }
-    }
-}
-
-@Composable
-fun PairedDevicesDialog(
-    pairedDevices: Set<BluetoothDevice>,
-    onDismissRequest: () -> Unit,
-    onConnectClick: (BluetoothDevice) -> Unit
-) {
-    Dialog(onDismissRequest = onDismissRequest) {
-        LazyColumn(modifier = Modifier.padding(16.dp)) {
-            item {
-                Text(
-                    text = "Paired Devices",
-                    style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.padding(vertical = 8.dp)
-                )
-            }
-            items(pairedDevices.toList()) { device ->
-                DeviceItem(device = device, onConnectClick = onConnectClick)
-            }
-        }
-    }
-}
-
-@Composable
-fun DiscoveredDevicesDialog(
-    discoveredDevices: Set<BluetoothDevice>,
-    onDismissRequest: () -> Unit,
-    onConnectClick: (BluetoothDevice) -> Unit
-) {
-    Dialog(onDismissRequest = onDismissRequest) {
-        LazyColumn(modifier = Modifier.padding(16.dp)) {
-            item {
-                Text(
-                    text = "Available Devices",
-                    style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.padding(vertical = 8.dp)
-                )
-            }
-            items(discoveredDevices.toList()) { device ->
-                DeviceItem(device = device, onConnectClick = onConnectClick)
-            }
         }
     }
 }

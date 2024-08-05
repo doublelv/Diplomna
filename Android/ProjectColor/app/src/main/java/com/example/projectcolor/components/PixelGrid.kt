@@ -55,11 +55,6 @@ fun PixelGrid(
                         .fillMaxWidth(1f)
                         .padding(0.dp)
                 ) {
-//                val density = LocalDensity.current // Access density for size calculation
-//                val screenWidth = DisplayMetrics().widthPixels // Get screen width in pixels
-//                val rowSize = (screenWidth / size).dp(density) // Calculate square size based on screen and count
-//                val rowSize = (screenWidth / size).dp
-
                     for (row in 0 until size) {
                         PixelButton(
                             modifier = Modifier.weight(1f),

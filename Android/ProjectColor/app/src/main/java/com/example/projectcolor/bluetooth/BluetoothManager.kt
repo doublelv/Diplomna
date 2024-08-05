@@ -22,9 +22,8 @@ import androidx.lifecycle.MutableLiveData
 class BluetoothManager(private val context: Context) {
 
     private val bluetoothAdapter: BluetoothAdapter? = BluetoothAdapter.getDefaultAdapter()
-    private val _discoveredDevices = MutableLiveData<Set<BluetoothDevice>>()
+    private val _discoveredDevices = MutableLiveData<Set<BluetoothDevice>>(emptySet())
     val discoveredDevices: LiveData<Set<BluetoothDevice>> = _discoveredDevices
-    private val handler = Handler(Looper.getMainLooper())
     private val discoveredDevicesSet = mutableSetOf<BluetoothDevice>()
 
     private val discoveryReceiver = object : BroadcastReceiver() {
@@ -33,10 +32,8 @@ class BluetoothManager(private val context: Context) {
             if (BluetoothDevice.ACTION_FOUND == action) {
                 val device: BluetoothDevice? = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE)
                 device?.let {
-                    // Add new device if not already present
-                    if (discoveredDevicesSet.add(it)) {
-                        _discoveredDevices.postValue(discoveredDevicesSet)
-                    }
+                    discoveredDevicesSet.add(it)
+                    _discoveredDevices.postValue(discoveredDevicesSet.toSet())  // Notify observers
                 }
             }
         }
@@ -101,25 +98,29 @@ class BluetoothManager(private val context: Context) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && !hasPermissions()) {
             throw SecurityException("BLUETOOTH_SCAN permission required")
         }
-        if (bluetoothAdapter?.isDiscovering == true) {
-            bluetoothAdapter.cancelDiscovery()
-        }
-        discoveredDevicesSet.clear()
-        _discoveredDevices.postValue(discoveredDevicesSet)
-        context.registerReceiver(discoveryReceiver, IntentFilter(BluetoothDevice.ACTION_FOUND))
-        bluetoothAdapter?.startDiscovery()
+        bluetoothAdapter?.let { adapter ->
+            if (adapter.isDiscovering) {
+                adapter.cancelDiscovery()
+            }
+            discoveredDevicesSet.clear()
+            _discoveredDevices.postValue(emptySet())  // Notify observers
+            context.registerReceiver(discoveryReceiver, IntentFilter(BluetoothDevice.ACTION_FOUND))
+            adapter.startDiscovery()
 
-        // Stop discovery after a certain period
-        handler.postDelayed({
-            stopDiscovery()
-        }, 30000) // Stops after 30 seconds
+            // Stop discovery after a certain period
+            Handler(Looper.getMainLooper()).postDelayed({
+                stopDiscovery()
+            }, 30000)  // Stops after 30 seconds
+        }
     }
 
     private fun stopDiscovery() {
-        if (bluetoothAdapter?.isDiscovering == true) {
-            bluetoothAdapter.cancelDiscovery()
+        bluetoothAdapter?.let { adapter ->
+            if (adapter.isDiscovering) {
+                adapter.cancelDiscovery()
+            }
+            context.unregisterReceiver(discoveryReceiver)
         }
-        context.unregisterReceiver(discoveryReceiver)
     }
 
     fun connectToDevice(device: BluetoothDevice) {
