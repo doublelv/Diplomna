@@ -5,6 +5,7 @@ import android.annotation.SuppressLint
 import android.app.Activity
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothDevice
+import android.bluetooth.BluetoothSocket
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -17,6 +18,15 @@ import android.util.Log
 import androidx.activity.result.ActivityResultLauncher
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.io.IOException
+import java.io.OutputStream
+import java.util.UUID
 
 @SuppressLint("MissingPermission")
 class BluetoothManager(private val context: Context) {
@@ -25,8 +35,17 @@ class BluetoothManager(private val context: Context) {
     private val _discoveredDevices = MutableLiveData<Set<BluetoothDevice>>(emptySet())
     val discoveredDevices: LiveData<Set<BluetoothDevice>> = _discoveredDevices
     private val discoveredDevicesSet = mutableSetOf<BluetoothDevice>()
+    private val MY_UUID: UUID = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB") // Example UUID
+    private var connectJob: Job? = null
+    private var sendJob: Job? = null
+    private val connectionTimeout = 10_000L // Timeout in milliseconds
+    private val sendInterval = 1_000L // Interval to send data (1 second)
+    private var bluetoothSocket: BluetoothSocket? = null
+    private var outputStream: OutputStream? = null
+
 
     private val discoveryReceiver = object : BroadcastReceiver() {
+
         override fun onReceive(context: Context?, intent: Intent?) {
             val action = intent?.action
             if (BluetoothDevice.ACTION_FOUND == action) {
@@ -123,7 +142,88 @@ class BluetoothManager(private val context: Context) {
         }
     }
 
-    fun connectToDevice(device: BluetoothDevice) {
-        // Implement the connection logic here
+    @SuppressLint("MissingPermission")
+    fun pairDevice(device: BluetoothDevice) {
+        if (device.bondState != BluetoothDevice.BOND_BONDED) {
+            device.createBond()
+        }
+    }
+
+    fun connectToDevice(device: BluetoothDevice, onConnectionResult: (Boolean) -> Unit) {
+        connectJob = CoroutineScope(Dispatchers.IO).launch {
+            try {
+                // Create a Bluetooth socket to the device
+                bluetoothSocket = device.createRfcommSocketToServiceRecord(MY_UUID)
+                bluetoothSocket?.connect()
+
+                // Get the output stream
+                outputStream = bluetoothSocket?.outputStream
+
+                // Notify success
+                withContext(Dispatchers.Main) {
+                    onConnectionResult(true)
+                }
+
+                // Start sending data
+//                startSendingData()
+            } catch (e: IOException) {
+                // Notify failure
+                withContext(Dispatchers.Main) {
+                    onConnectionResult(false)
+                }
+                // Log error
+                Log.e("BluetoothManager", "Connection failed: ${e.message}", e)
+            } finally {
+                if (bluetoothSocket?.isConnected == false) {
+                    try {
+                        bluetoothSocket?.close()
+                    } catch (e: IOException) {
+                        Log.e("BluetoothManager", "Error closing socket", e)
+                    } finally {
+                        bluetoothSocket = null
+                    }
+                }
+            }
+        }
+
+        // Cancel the job if it takes too long
+        connectJob?.let { job ->
+            CoroutineScope(Dispatchers.IO).launch {
+                delay(connectionTimeout)
+                if (job.isActive) {
+                    job.cancel()
+                    withContext(Dispatchers.Main) {
+                        onConnectionResult(false)
+                    }
+                }
+            }
+        }
+    }
+
+    private fun startSendingData() {
+        sendJob = CoroutineScope(Dispatchers.IO).launch {
+            while (true) {
+                delay(sendInterval)
+//                sendData("hello\n")
+            }
+        }
+    }
+
+    fun sendData(message: String) {
+        try {
+            bluetoothSocket?.outputStream?.write(message.toByteArray())
+        } catch (e: IOException) {
+            // Handle the exception
+            Log.e("BluetoothManager", "Failed to send data: ${e.message}", e)
+        }
+    }
+
+    fun cancelConnection() {
+        connectJob?.cancel()
+        sendJob?.cancel()
+        connectJob = null
+        sendJob = null
+        outputStream?.close()
+        bluetoothSocket?.close()
     }
 }

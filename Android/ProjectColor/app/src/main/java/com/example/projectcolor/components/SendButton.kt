@@ -10,8 +10,10 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.MutableState
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.example.projectcolor.RGBMatrix
+import com.example.projectcolor.bluetooth.BluetoothManager
 import java.io.ByteArrayOutputStream
 import java.io.DataOutputStream
 import java.io.IOException
@@ -21,6 +23,7 @@ import java.io.IOException
 fun SendButton(
     modifier: Modifier = Modifier,
     matrix: MutableState<RGBMatrix>,
+    bluetoothManager: BluetoothManager
 ) {
     Row(
         modifier = modifier.padding(4.dp),) {
@@ -28,38 +31,34 @@ fun SendButton(
             modifier = Modifier.width(120.dp).padding(end = 4.dp),
             onClick = {
                 logMatrixInfo(matrix)
-                val data = serializeMatrix(matrix.value)
+                val data = serializeMatrix(matrix)
+//                bluetoothManager.sendData("Hello\n")
+                bluetoothManager.sendData(data.toString())
             },
         ) {
             Text(text = "Send")
         }
-//        Button(
-//            modifier = Modifier.width(120.dp).padding(start = 4.dp),
-//            onClick = { /*TODO*/ },
-//        ) {
-//            Text(text = "Receive")
-//        }
     }
 }
-
-fun serializeMatrix(matrix: RGBMatrix): ByteArray {
+@SuppressLint("DefaultLocale")
+fun serializeMatrix(matrix: MutableState<RGBMatrix>): String {
     val byteArrayOutputStream = ByteArrayOutputStream()
     val dataOutputStream = DataOutputStream(byteArrayOutputStream)
 
     try {
-        for (row in 0 until matrix.height) {
-            for (column in 0 until matrix.width) {
-                val pixel = matrix.getPixel(row, column)
-                dataOutputStream.writeByte((pixel.red * 255).toInt())
-                dataOutputStream.writeByte((pixel.green * 255).toInt())
-                dataOutputStream.writeByte((pixel.blue * 255).toInt())
+        for (row in 0 until matrix.value.height) {
+            for (column in 0 until matrix.value.width) {
+                val pixel = matrix.value.getPixel(row, column)
+                dataOutputStream.writeByte((pixel.red * 255f).toInt())
+                dataOutputStream.writeByte((pixel.green * 255f).toInt())
+                dataOutputStream.writeByte((pixel.blue * 255f).toInt())
             }
         }
     } catch (e: IOException) {
         Log.e("MainActivity", "Error serializing matrix", e)
     }
 
-    return byteArrayOutputStream.toByteArray()
+    return byteArrayOutputStream.toByteArray().toString()
 }
 
 

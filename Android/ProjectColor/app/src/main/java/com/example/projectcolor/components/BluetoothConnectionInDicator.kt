@@ -37,18 +37,22 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import com.example.projectcolor.bluetooth.BluetoothManager
 
+@SuppressLint("MissingPermission")
 @Composable
 fun BluetoothConnectionIndicator(
     modifier: Modifier = Modifier,
+    bluetoothManager: BluetoothManager,
     isConnected: Boolean,
     onConnectClick: (BluetoothDevice) -> Unit,
     onDisconnectClick: () -> Unit
 ) {
     val context = LocalContext.current
     val activity = context as Activity
-    val bluetoothManager = remember { BluetoothManager(context) }
+//    val bluetoothManager = remember { BluetoothManager(context) }
 
     var showDevicesDialog by remember { mutableStateOf(false) }
+    var isLoading by remember { mutableStateOf(false) } // Loading state
+    var connectionError by remember { mutableStateOf(false) } // Connection error state
 
     val enableBluetoothLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()
@@ -71,6 +75,7 @@ fun BluetoothConnectionIndicator(
             .clickable {
                 if (isConnected) {
                     onDisconnectClick()
+                    bluetoothManager.cancelConnection()
                 } else {
                     if (!bluetoothManager.hasBluetoothSupport()) {
                         return@clickable
@@ -101,16 +106,37 @@ fun BluetoothConnectionIndicator(
                 color = Color.White,
                 fontSize = MaterialTheme.typography.bodyMedium.fontSize
             )
+
+            if (connectionError) {
+                Text(
+                    text = "Connection failed. Try again.",
+                    color = Color.White,
+                    fontSize = MaterialTheme.typography.bodyMedium.fontSize
+                )
+            }
         }
 
         if (showDevicesDialog) {
             DevicesDialog(
                 pairedDevices = bluetoothManager.getPairedDevices(),
                 discoveredDevices = discoveredDevices,
-                onDismissRequest = { showDevicesDialog = false },
-                onConnectClick = { device ->
-                    onConnectClick(device)
+                onDismissRequest = {
                     showDevicesDialog = false
+                    bluetoothManager.cancelConnection()
+                },
+                onConnectClick = { device ->
+                    isLoading = true
+                    connectionError = false
+                    bluetoothManager.connectToDevice(device) { success ->
+                        isLoading = false
+                        if (success) {
+                            onConnectClick(device)
+                            showDevicesDialog = false
+                        } else {
+                            connectionError = true
+                            showDevicesDialog = true
+                        }
+                    }
                 }
             )
         }

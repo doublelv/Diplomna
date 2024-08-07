@@ -7,6 +7,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -36,8 +38,9 @@ fun PixelGrid(
 ) {
     Box(
         modifier = Modifier
-            .fillMaxWidth()
             .padding(4.dp)
+            .aspectRatio(1f)
+            .fillMaxWidth(1f)
             .clip(
                 RoundedCornerShape(
                     topStart = 20.dp,
@@ -47,13 +50,14 @@ fun PixelGrid(
             ),
     ) {
         Column(
-            modifier = Modifier.padding(0.dp),
+            modifier = modifier.padding(0.dp).aspectRatio(1f),
             verticalArrangement = Arrangement.Center) {
             for (column in 0 until size) {
                 Row(
-                    modifier = modifier
-                        .fillMaxWidth(1f)
+                    modifier = Modifier
                         .padding(0.dp)
+                        .weight(1f)
+                        .fillMaxWidth(1f)
                 ) {
                     for (row in 0 until size) {
                         PixelButton(
@@ -90,11 +94,10 @@ fun PixelButton(
             matrix.value.setPixel(column, row, pixel)
         },
         colors = ButtonDefaults.buttonColors(containerColor = buttonColor),
-        modifier = modifier
-            .padding(0.dp)
-            .fillMaxWidth()
-            .aspectRatio(1f),
-        border = BorderStroke(1.dp, Color.Black),
+        modifier = modifier,
+//            .fillMaxSize(1f)
+//            .aspectRatio(1f),
+//        border = BorderStroke(1.dp, Color.White),
         shape = RoundedCornerShape(0.dp),
     )
     {}
