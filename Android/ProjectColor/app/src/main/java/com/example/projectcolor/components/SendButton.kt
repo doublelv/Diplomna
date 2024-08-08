@@ -19,6 +19,7 @@ import java.io.DataOutputStream
 import java.io.IOException
 
 
+@OptIn(ExperimentalStdlibApi::class)
 @Composable
 fun SendButton(
     modifier: Modifier = Modifier,
@@ -28,20 +29,78 @@ fun SendButton(
     Row(
         modifier = modifier.padding(4.dp),) {
         Button(
-            modifier = Modifier.width(120.dp).padding(end = 4.dp),
+            modifier = Modifier
+                .width(120.dp)
+                .padding(end = 4.dp),
             onClick = {
                 logMatrixInfo(matrix)
-                val data = serializeMatrix(matrix)
-//                bluetoothManager.sendData("Hello\n")
-                bluetoothManager.sendData(data.toString())
+//                val data = serializeMatrix(matrix)
+                var serializedMatrixData = serializeRow(matrix, 0).toHexString()
+                Log.d("SendButton", "RAW data: ${serializedMatrixData}")
+                serializedMatrixData = addDelimeters(serializedMatrixData)
+                Log.d("SendButton", "Sending delimetered data: ${serializedMatrixData}")
+                bluetoothManager.sendData(serializedMatrixData + "\n")   // \n is a delimeter
             },
         ) {
             Text(text = "Send")
         }
     }
 }
-@SuppressLint("DefaultLocale")
-fun serializeMatrix(matrix: MutableState<RGBMatrix>): String {
+
+fun addDelimeters(serialData: String): String {
+    val endOfArray = "\n"
+    val endOfPixelInfo = ","
+    val endOfByteInfo = "."
+
+    var newSerialData = ""
+
+    for (index in 1 until serialData.length + 1) {
+        newSerialData += serialData[index-1]
+
+        if ((index) % 10 == 0) {
+            newSerialData += endOfPixelInfo
+        }
+//
+//        else if (index % 2 == 0) {
+//            newSerialData += endOfByteInfo
+//        }
+
+
+    }
+    return newSerialData + endOfArray
+}
+
+fun serializeRow(
+    matrix: MutableState<RGBMatrix>,
+    row: Int = 0,
+    ): ByteArray {
+    val byteArray = ByteArray(5*16 + 1)
+    var index = 0
+    try {
+        for (column in 0 until matrix.value.width) {
+
+            byteArray[index] = row.toByte()
+            byteArray[index+1] = column.toByte()
+            byteArray[index+2] = (255).toByte()
+            byteArray[index+3] = (255).toByte()
+            byteArray[index+4] = (255).toByte()
+            Log.d("SendButton", "Data($row, $column): ")
+            Log.d("SendButton", "R: byteArray[index+2] ${byteArray[index+2]}")
+            Log.d("SendButton", "G: byteArray[index+3] ${byteArray[index+3]}")
+            Log.d("SendButton", "B: byteArray[index+4] ${byteArray[index+4]}")
+            index += 5
+        }
+    } catch (e: IOException) {
+        Log.e("MainActivity", "Error serializing matrix", e)
+    }
+
+    return byteArray
+}
+
+fun serializeMatrix(
+    matrix: MutableState<RGBMatrix>,
+    row: Int = 0,
+): String {
     val byteArrayOutputStream = ByteArrayOutputStream()
     val dataOutputStream = DataOutputStream(byteArrayOutputStream)
 
@@ -49,6 +108,8 @@ fun serializeMatrix(matrix: MutableState<RGBMatrix>): String {
         for (row in 0 until matrix.value.height) {
             for (column in 0 until matrix.value.width) {
                 val pixel = matrix.value.getPixel(row, column)
+                dataOutputStream.writeByte(row)
+                dataOutputStream.writeByte(column)
                 dataOutputStream.writeByte((pixel.red * 255f).toInt())
                 dataOutputStream.writeByte((pixel.green * 255f).toInt())
                 dataOutputStream.writeByte((pixel.blue * 255f).toInt())
