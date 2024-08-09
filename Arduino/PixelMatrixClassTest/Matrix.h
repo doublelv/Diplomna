@@ -141,7 +141,7 @@ public:
 };
 
 
-void parseByteArray(String str, Matrix* PixelMatrix) {
+void parseByteArray(String str, Matrix PixelMatrix) {
   String buffer = "";
   uint8_t row = 0;
   uint8_t column = 0;

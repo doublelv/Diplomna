@@ -34,12 +34,13 @@ fun SendButton(
                 .padding(end = 4.dp),
             onClick = {
                 logMatrixInfo(matrix)
-//                val data = serializeMatrix(matrix)
                 var serializedMatrixData = serializeRow(matrix, 0).toHexString()
-                Log.d("SendButton", "RAW data: ${serializedMatrixData}")
-                serializedMatrixData = addDelimeters(serializedMatrixData)
-                Log.d("SendButton", "Sending delimetered data: ${serializedMatrixData}")
-                bluetoothManager.sendData(serializedMatrixData + "\n")   // \n is a delimeter
+                Log.d("SendButton", "serializedMatrixData: ${serializedMatrixData}")
+
+
+                var fullData = addChecksums(serializedMatrixData)
+                Log.d("SendButton", "fullData: ${fullData}")
+                bluetoothManager.sendData(fullData + "\n")   // \n is a delimeter
             },
         ) {
             Text(text = "Send")
@@ -47,48 +48,42 @@ fun SendButton(
     }
 }
 
-fun addDelimeters(serialData: String): String {
-    val endOfArray = "\n"
-    val endOfPixelInfo = ","
-    val endOfByteInfo = "."
+@OptIn(ExperimentalStdlibApi::class)
+fun addChecksums(data: String): String {
 
-    var newSerialData = ""
+    var fulldata: String = "";
 
-    for (index in 1 until serialData.length + 1) {
-        newSerialData += serialData[index-1]
-
-        if ((index) % 10 == 0) {
-            newSerialData += endOfPixelInfo
+    for (i in 0 until data.length step 8)
+        {
+            val chunk = data.substring(i, i + 8)
+            var checksum = checkSum(hexStringToBinaryString(chunk), 8)
+            Log.d("SendButton", "chunk: ${chunk}")
+            Log.d("SendButton", "checksum: ${checksum}")
+            checksum = checksum.toInt(2).toString(16).padStart(2, '0')
+            Log.d("SendButton", "checksum: ${checksum}")
+            fulldata = fulldata + chunk + checksum
         }
-//
-//        else if (index % 2 == 0) {
-//            newSerialData += endOfByteInfo
-//        }
-
-
-    }
-    return newSerialData + endOfArray
+    return fulldata
 }
 
 fun serializeRow(
     matrix: MutableState<RGBMatrix>,
     row: Int = 0,
     ): ByteArray {
-    val byteArray = ByteArray(5*16 + 1)
+    val byteArray = ByteArray(4*16)
     var index = 0
     try {
         for (column in 0 until matrix.value.width) {
-
-            byteArray[index] = row.toByte()
-            byteArray[index+1] = column.toByte()
-            byteArray[index+2] = (255).toByte()
-            byteArray[index+3] = (255).toByte()
-            byteArray[index+4] = (255).toByte()
-            Log.d("SendButton", "Data($row, $column): ")
-            Log.d("SendButton", "R: byteArray[index+2] ${byteArray[index+2]}")
-            Log.d("SendButton", "G: byteArray[index+3] ${byteArray[index+3]}")
-            Log.d("SendButton", "B: byteArray[index+4] ${byteArray[index+4]}")
-            index += 5
+            val pixel = matrix.value.getPixel(row, column)
+            byteArray[index] = ((row shl 4) + column).toByte()
+            byteArray[index+1] = (pixel.red * 255f).toInt().toByte()
+            byteArray[index+2] = (pixel.green * 255f).toInt().toByte()
+            byteArray[index+3] = (pixel.blue * 255f).toInt().toByte()
+//            Log.d("SendButton", "Data($row, $column): ")
+//            Log.d("SendButton", "R: byteArray[index+2] ${byteArray[index+1]}")
+//            Log.d("SendButton", "G: byteArray[index+3] ${byteArray[index+2]}")
+//            Log.d("SendButton", "B: byteArray[index+4] ${byteArray[index+3]}")
+            index += 4
         }
     } catch (e: IOException) {
         Log.e("MainActivity", "Error serializing matrix", e)
