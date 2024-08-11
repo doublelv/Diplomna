@@ -48,8 +48,6 @@ fun BluetoothConnectionIndicator(
 ) {
     val context = LocalContext.current
     val activity = context as Activity
-//    val bluetoothManager = remember { BluetoothManager(context) }
-
     var showDevicesDialog by remember { mutableStateOf(false) }
     var isLoading by remember { mutableStateOf(false) } // Loading state
     var connectionError by remember { mutableStateOf(false) } // Connection error state
@@ -80,7 +78,6 @@ fun BluetoothConnectionIndicator(
                     if (!bluetoothManager.hasBluetoothSupport()) {
                         return@clickable
                     }
-
                     if (bluetoothManager.isBluetoothEnabled()) {
                         if (!bluetoothManager.hasPermissions()) {
                             bluetoothManager.requestPermissions(activity, 1001)
@@ -168,11 +165,11 @@ fun DevicesDialog(
                 style = MaterialTheme.typography.bodyMedium,
                 modifier = Modifier.padding(vertical = 8.dp)
             )
-            LazyColumn(modifier = Modifier.fillMaxWidth()) {
-                items(discoveredDevices.toList()) { device ->
-                    DeviceItem(device = device, onConnectClick = onConnectClick)
-                }
-            }
+//            LazyColumn(modifier = Modifier.fillMaxWidth()) {
+//                items(discoveredDevices.toList()) { device ->
+//                    DeviceItem(device = device, onConnectClick = onConnectClick)
+//                }
+//            }
         }
     }
 }

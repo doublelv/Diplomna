@@ -25,7 +25,7 @@ fun MainScreen() {
     val bluetoothManager = remember { BluetoothManager(context)}
     val pixelGridMatrix = remember { mutableStateOf(RGBMatrix(16, 16)) }
     var isConnected by remember { mutableStateOf(false) }
-    val selectedColor = remember { mutableStateOf<Color?>(Color.White) }
+    val selectedColor = remember { mutableStateOf<Color?>(Color.Red) }
     val onColorSelected: (Color) -> Unit = { color ->
         selectedColor.value = color
     }
@@ -37,7 +37,6 @@ fun MainScreen() {
                 .padding(innerPadding),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-
             SizeDisplay()
             Spacer(modifier = Modifier.weight(1f))
             BluetoothConnectionIndicator(
@@ -47,7 +46,11 @@ fun MainScreen() {
                 onDisconnectClick = { isConnected = false})
             Spacer(modifier = Modifier.weight(1f))
             ColorPickerButtons(onColorSelected = onColorSelected)
-            PixelGrid(modifier = Modifier.fillMaxWidth(1f),selectedColor = selectedColor, size = 16, matrix = pixelGridMatrix)
+            PixelGrid(
+                modifier = Modifier.fillMaxWidth(1f),
+                selectedColor = selectedColor,
+                size = 16,
+                matrix = pixelGridMatrix)
             SendButton(
                 bluetoothManager = bluetoothManager,
                 modifier = Modifier.align(Alignment.CenterHorizontally),

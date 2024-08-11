@@ -1,14 +1,12 @@
 package com.example.projectcolor.components
 
 import android.util.Log
-import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -32,7 +30,7 @@ import com.example.projectcolor.RGBMatrix
 @Composable
 fun PixelGrid(
     modifier: Modifier = Modifier,
-    size: Int = 8,
+    size: Int = 16,
     selectedColor: State<Color?>,
     matrix: MutableState<RGBMatrix>
 ) {
@@ -46,8 +44,8 @@ fun PixelGrid(
                     topStart = 20.dp,
                     topEnd = 20.dp,
                     bottomStart = 20.dp,
-                    bottomEnd = 20.dp)
-            ),
+                    bottomEnd = 20.dp))
+            .border(1.dp, Color.White, RoundedCornerShape(20.dp))
     ) {
         Column(
             modifier = modifier.padding(0.dp).aspectRatio(1f),
@@ -87,6 +85,7 @@ fun PixelButton(
     var buttonColor  by remember { mutableStateOf(Color.Black) }
 
     Button(
+        modifier = modifier,
         onClick = {
             buttonColor = selectedColor ?: Color.Black
             Log.d("selectedColor", "Selected Color is ($buttonColor)")
@@ -94,11 +93,6 @@ fun PixelButton(
             matrix.value.setPixel(column, row, pixel)
         },
         colors = ButtonDefaults.buttonColors(containerColor = buttonColor),
-        modifier = modifier,
-//            .fillMaxSize(1f)
-//            .aspectRatio(1f),
-//        border = BorderStroke(1.dp, Color.White),
-        shape = RoundedCornerShape(0.dp),
-    )
-    {}
+        shape = RoundedCornerShape(0.dp)
+    ) {}
 }

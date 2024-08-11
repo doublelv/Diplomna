@@ -1,6 +1,5 @@
 package com.example.projectcolor.components
 
-import android.annotation.SuppressLint
 import android.util.Log
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
@@ -10,66 +9,50 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.MutableState
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.example.projectcolor.RGBMatrix
 import com.example.projectcolor.bluetooth.BluetoothManager
-import java.io.ByteArrayOutputStream
-import java.io.DataOutputStream
 import java.io.IOException
 
-
-@OptIn(ExperimentalStdlibApi::class)
+// Button to send the matrix data to the device
 @Composable
 fun SendButton(
     modifier: Modifier = Modifier,
     matrix: MutableState<RGBMatrix>,
     bluetoothManager: BluetoothManager
 ) {
+    val isBluetoothConnected = bluetoothManager.isConnected()
     Row(
-        modifier = modifier.padding(4.dp),) {
+        modifier = modifier.padding(4.dp)) {
         Button(
             modifier = Modifier
                 .width(120.dp)
                 .padding(end = 4.dp),
             onClick = {
-                logMatrixInfo(matrix)
-                var serializedMatrixData = serializeRow(matrix, 0).toHexString()
-                Log.d("SendButton", "serializedMatrixData: ${serializedMatrixData}")
-
-
-                var fullData = addChecksums(serializedMatrixData)
-                Log.d("SendButton", "fullData: ${fullData}")
-                bluetoothManager.sendData(fullData + "\n")   // \n is a delimeter
+                //sendFullMatrixData(matrix, bluetoothManager)
+                communicationValidationTest(bluetoothManager)
             },
+            enabled = isBluetoothConnected
         ) {
             Text(text = "Send")
         }
     }
 }
 
-@OptIn(ExperimentalStdlibApi::class)
-fun addChecksums(data: String): String {
-
-    var fulldata: String = "";
-
-    for (i in 0 until data.length step 8)
-        {
-            val chunk = data.substring(i, i + 8)
-            var checksum = checkSum(hexStringToBinaryString(chunk), 8)
-            Log.d("SendButton", "chunk: ${chunk}")
-            Log.d("SendButton", "checksum: ${checksum}")
-            checksum = checksum.toInt(2).toString(16).padStart(2, '0')
-            Log.d("SendButton", "checksum: ${checksum}")
-            fulldata = fulldata + chunk + checksum
-        }
-    return fulldata
+// Adds checksum to a row of pixel data
+fun addChecksumToRow(data: String): String{
+    var checksum = checkSum(hexStringToBinaryString(data), 8)
+    checksum = checksum.toInt(2).toString(16).padStart(2, '0')
+    return (data + checksum)
 }
 
+// Serializes a full row of pixel data into a byte array
+@OptIn(ExperimentalStdlibApi::class)
 fun serializeRow(
     matrix: MutableState<RGBMatrix>,
     row: Int = 0,
-    ): ByteArray {
+    ): String {
+
     val byteArray = ByteArray(4*16)
     var index = 0
     try {
@@ -79,55 +62,93 @@ fun serializeRow(
             byteArray[index+1] = (pixel.red * 255f).toInt().toByte()
             byteArray[index+2] = (pixel.green * 255f).toInt().toByte()
             byteArray[index+3] = (pixel.blue * 255f).toInt().toByte()
-//            Log.d("SendButton", "Data($row, $column): ")
-//            Log.d("SendButton", "R: byteArray[index+2] ${byteArray[index+1]}")
-//            Log.d("SendButton", "G: byteArray[index+3] ${byteArray[index+2]}")
-//            Log.d("SendButton", "B: byteArray[index+4] ${byteArray[index+3]}")
             index += 4
         }
     } catch (e: IOException) {
         Log.e("MainActivity", "Error serializing matrix", e)
     }
 
-    return byteArray
+    var byteArrayString = byteArray.toHexString()
+    byteArrayString = addChecksumToRow(byteArrayString) + "\n"
+
+    return byteArrayString
 }
 
-fun serializeMatrix(
-    matrix: MutableState<RGBMatrix>,
-    row: Int = 0,
-): String {
-    val byteArrayOutputStream = ByteArrayOutputStream()
-    val dataOutputStream = DataOutputStream(byteArrayOutputStream)
-
+// Serializes the full matrix of pixel data into a byte array
+fun serializeMatrix(matrix: MutableState<RGBMatrix>): String {
+    var outputString = ""
     try {
         for (row in 0 until matrix.value.height) {
-            for (column in 0 until matrix.value.width) {
-                val pixel = matrix.value.getPixel(row, column)
-                dataOutputStream.writeByte(row)
-                dataOutputStream.writeByte(column)
-                dataOutputStream.writeByte((pixel.red * 255f).toInt())
-                dataOutputStream.writeByte((pixel.green * 255f).toInt())
-                dataOutputStream.writeByte((pixel.blue * 255f).toInt())
-            }
+            val serializedRow = serializeRow(matrix, row)
+            outputString += serializedRow + "\n"
         }
     } catch (e: IOException) {
         Log.e("MainActivity", "Error serializing matrix", e)
     }
-
-    return byteArrayOutputStream.toByteArray().toString()
+    return outputString
 }
 
-
-@SuppressLint("DefaultLocale")
-fun logMatrixInfo(matrix: MutableState<RGBMatrix>) {
-    for (row in 0 until matrix.value.width) {
-        for (column in 0 until matrix.value.height) {
-            val pixel = matrix.value.getPixel(row, column)
-            val redString = String.format("%03d", (pixel.red * 255f).toInt())
-            val greenString = String.format("%03d", (pixel.green * 255f).toInt())
-            val blueString = String.format("%03d", (pixel.blue * 255f).toInt())
-            val message = "Pixel($row, $column) - R: $redString, G: $greenString, B: $blueString"
-            Log.d("PixelGrid", message)
-        }
+fun sendFullMatrixData(matrix: MutableState<RGBMatrix>, bluetoothManager: BluetoothManager) {
+    for (row in 0 until matrix.value.height) {
+        sendRow(matrix, row, bluetoothManager)
+        Thread.sleep(500)
     }
 }
+
+fun sendRow(matrix: MutableState<RGBMatrix>, row: Int, bluetoothManager: BluetoothManager) {
+    val serializedRow = serializeRow(matrix, row)
+    Log.d("SendButton", "serializedRow: \n$serializedRow")
+
+    bluetoothManager.sendData(serializedRow)   // / is a delimiter
+}
+
+// TEST
+fun communicationValidationTest(bluetoothManager: BluetoothManager) {
+    val retryLimit = 3
+    val timeoutMillis = 5000L
+    var retryCount = 0
+    var handshakeSuccessful = false
+
+    while (retryCount < retryLimit && !handshakeSuccessful) {
+        bluetoothManager.sendData("syn")
+        Log.d("SendButton", "SYN sent, waiting for SYN-ACK...")
+
+        val response = bluetoothManager.receiveData(timeoutMillis)
+        if (response == "syn-ack") {
+            Log.d("SendButton", "SYN-ACK received.")
+            bluetoothManager.sendData("ack")
+            Log.d("SendButton", "ACK sent.")
+            handshakeSuccessful = true
+        } else {
+            retryCount++
+            Log.d("SendButton", "SYN-ACK not received, retrying... ($retryCount/$retryLimit)")
+            Thread.sleep(1000)
+        }
+    }
+
+    if (handshakeSuccessful) {
+        val message = "Hello, World!"
+        bluetoothManager.sendData("data: $message")
+        Log.d("SendButton", "Data sent: $message")
+
+        val dataAck = bluetoothManager.receiveData(timeoutMillis)
+        if (dataAck == "data-ack") {
+            bluetoothManager.sendData("fin")
+            Log.d("SendButton", "FIN sent, waiting for FIN-ACK...")
+
+            val finAck = bluetoothManager.receiveData(timeoutMillis)
+            if (finAck == "fin-ack") {
+                bluetoothManager.sendData("ack")
+                Log.d("SendButton", "FIN-ACK received, connection terminated.")
+            } else {
+                Log.d("SendButton", "Failed to terminate connection: FIN-ACK not received.")
+            }
+        } else {
+            Log.d("SendButton", "Failed to receive data acknowledgment.")
+        }
+    } else {
+        Log.d("SendButton", "Failed to establish connection after $retryLimit attempts.")
+    }
+}
+
+

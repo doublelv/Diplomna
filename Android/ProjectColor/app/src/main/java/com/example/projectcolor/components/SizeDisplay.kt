@@ -9,7 +9,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 
 @Composable
-fun SizeDisplay(modifier: Modifier = Modifier) {
+fun SizeDisplay() {
     Row(verticalAlignment = Alignment.CenterVertically) {
         Spacer(modifier = Modifier.weight(1f))
         Text(text = "16x16", style = MaterialTheme.typography.titleLarge)

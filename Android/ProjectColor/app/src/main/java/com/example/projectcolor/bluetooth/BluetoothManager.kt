@@ -25,6 +25,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.IOException
+import java.io.InputStream
 import java.io.OutputStream
 import java.util.UUID
 
@@ -42,6 +43,7 @@ class BluetoothManager(private val context: Context) {
     private val sendInterval = 1_000L // Interval to send data (1 second)
     private var bluetoothSocket: BluetoothSocket? = null
     private var outputStream: OutputStream? = null
+    private var inputStream: InputStream? = null
 
 
     private val discoveryReceiver = object : BroadcastReceiver() {
@@ -129,7 +131,7 @@ class BluetoothManager(private val context: Context) {
             // Stop discovery after a certain period
             Handler(Looper.getMainLooper()).postDelayed({
                 stopDiscovery()
-            }, 30000)  // Stops after 30 seconds
+            }, 10000)  // Stops after 10 seconds
         }
     }
 
@@ -158,6 +160,9 @@ class BluetoothManager(private val context: Context) {
 
                 // Get the output stream
                 outputStream = bluetoothSocket?.outputStream
+
+                // Get the input stream
+                inputStream = bluetoothSocket?.inputStream
 
                 // Notify success
                 withContext(Dispatchers.Main) {
@@ -209,21 +214,61 @@ class BluetoothManager(private val context: Context) {
         }
     }
 
+    fun isConnected(): Boolean {
+        return bluetoothSocket?.isConnected == true
+    }
+
     fun sendData(message: String) {
+        if (bluetoothSocket == null || bluetoothSocket?.isConnected == false) {
+            Log.e("BluetoothManager", "Cannot send data: socket is not connected")
+            return
+        }
+
         try {
-            bluetoothSocket?.outputStream?.write(message.toByteArray())
+            Log.d("BluetoothManager", "Sending data: $message")
+            bluetoothSocket?.outputStream?.write((message + "\n").toByteArray())  // Adding newline to delimit messages
         } catch (e: IOException) {
-            // Handle the exception
             Log.e("BluetoothManager", "Failed to send data: ${e.message}", e)
+            // Optionally, handle socket reinitialization or reconnection here
         }
     }
 
+    fun receiveData(timeoutMillis: Long = 5000L): String? {
+        if (bluetoothSocket == null || bluetoothSocket?.isConnected == false) {
+            Log.e("BluetoothManager", "Cannot receive data: socket is not connected")
+            return null
+        }
+
+        val startTime = System.currentTimeMillis()
+        while (System.currentTimeMillis() - startTime < timeoutMillis) {
+            val available = bluetoothSocket?.inputStream?.available() ?: 0
+            if (available > 0) {
+                val buffer = ByteArray(available)
+                bluetoothSocket?.inputStream?.read(buffer)
+                val response = String(buffer).trim()  // Trim whitespace and newlines
+                Log.d("BluetoothManager", "Received data: $response")
+                return response
+            }
+            Thread.sleep(100)  // Small delay to avoid busy-waiting
+        }
+        Log.d("BluetoothManager", "Timeout waiting for response")
+        return null
+    }
+
+
     fun cancelConnection() {
-        connectJob?.cancel()
-        sendJob?.cancel()
-        connectJob = null
-        sendJob = null
-        outputStream?.close()
-        bluetoothSocket?.close()
+        try {
+            connectJob?.cancel()
+            sendJob?.cancel()
+            connectJob = null
+            sendJob = null
+            outputStream?.close()
+            bluetoothSocket?.close()
+        } catch (e: IOException) {
+            Log.e("BluetoothManager", "Error closing socket or stream: ${e.message}", e)
+        } finally {
+            outputStream = null
+            bluetoothSocket = null
+        }
     }
 }
