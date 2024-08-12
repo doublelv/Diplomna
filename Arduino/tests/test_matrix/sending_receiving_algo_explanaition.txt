@@ -1,0 +1,21 @@
+  App -> sends "syn"
+
+->Ard receives "syn"
+  Ard -> sends "syn-ack"
+
+->App receives "syn-ack"
+  App -> sends "ack"
+
+->Ard receives "ack"
+  Ard -> sends "ack"
+
+->App receives "ack"
+while(!fin || timeout) {
+  App -> sends "$(rowdata+checksum)"
+->Ard receives "$(rowdata+checksum)"
+  Ard result = (recalculate checksum)
+  if (result == "00000000"(2) || result == "0x00") {
+    Ard -> sends "row success"
+  } 
+  else { App resends row data and tries again}
+}
