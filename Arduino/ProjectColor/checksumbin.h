@@ -53,24 +53,28 @@ void hexstring_to_binaryCharArray(const char* hexstring, char* binaryString) {
     int length = strlen(hexstring);
     for(int index = 0; index < length; index++) {
         switch(hexstring[index]) {
-            case '0': strcat(binaryString, "0000"); break;
-            case '1': strcat(binaryString, "0001"); break;
-            case '2': strcat(binaryString, "0010"); break;
-            case '3': strcat(binaryString, "0011"); break;
-            case '4': strcat(binaryString, "0100"); break;
-            case '5': strcat(binaryString, "0101"); break;
-            case '6': strcat(binaryString, "0110"); break;
-            case '7': strcat(binaryString, "0111"); break;
-            case '8': strcat(binaryString, "1000"); break;
-            case '9': strcat(binaryString, "1001"); break;
-            case 'a': case 'A': strcat(binaryString, "1010"); break;
-            case 'b': case 'B': strcat(binaryString, "1011"); break;
-            case 'c': case 'C': strcat(binaryString, "1100"); break;
-            case 'd': case 'D': strcat(binaryString, "1101"); break;
-            case 'e': case 'E': strcat(binaryString, "1110"); break;
-            case 'f': case 'F': strcat(binaryString, "1111"); break;
+            case '0':           memcpy(binaryString + index * 4, "0000", 4); break;
+            case '1':           memcpy(binaryString + index * 4, "0001", 4); break;
+            case '2':           memcpy(binaryString + index * 4, "0010", 4); break;
+            case '3':           memcpy(binaryString + index * 4, "0011", 4); break;
+            case '4':           memcpy(binaryString + index * 4, "0100", 4); break;
+            case '5':           memcpy(binaryString + index * 4, "0101", 4); break;
+            case '6':           memcpy(binaryString + index * 4, "0110", 4); break;
+            case '7':           memcpy(binaryString + index * 4, "0111", 4); break;
+            case '8':           memcpy(binaryString + index * 4, "1000", 4); break;
+            case '9':           memcpy(binaryString + index * 4, "1001", 4); break;
+            case 'a': case 'A': memcpy(binaryString + index * 4, "1010", 4); break;
+            case 'b': case 'B': memcpy(binaryString + index * 4, "1011", 4); break;
+            case 'c': case 'C': memcpy(binaryString + index * 4, "1100", 4); break;
+            case 'd': case 'D': memcpy(binaryString + index * 4, "1101", 4); break;
+            case 'e': case 'E': memcpy(binaryString + index * 4, "1110", 4); break;
+            case 'f': case 'F': memcpy(binaryString + index * 4, "1111", 4); break;
+            default:            Serial.print("Invalid hex character: "); Serial.println(hexstring[index]); break;
+
         }
     }
+    binaryString[length * 4] = '\0';  // Null-terminate the string
+        // Debug: Print the binary string at each step
 }
 
 // string arguments variant
