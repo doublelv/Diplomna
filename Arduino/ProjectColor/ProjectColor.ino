@@ -1,35 +1,37 @@
 #include <SoftwareSerial.h>
 #include <FastLED.h>
 #include "checksumbin.h"
-#include "checksumhex.h"
 
 #define MATRIX_SIZE 16
 #define LEDS_DATA_PIN 12
 #define NUM_LEDS 256
-#define ROW_CHAR_SIZE 520 //16_rows * 4_bytes(pos,R,G,B) * 8bits(per Byte) + 8bits(1Byte for checksum) 
-#define BLOCK_SIZE 8
+#define BLOCK_SIZE 4
 
+#define SYN "syn"
+#define SYN_ACK "syn-ack"
+#define ACK "ack"
+#define PIXEL_SUCCESS "PIXEL-SUCCESS"
+#define PIXEL_FAIL "PIXEL-FAIL"
+// #define ROW_SUCCESS "row-success"
+// #define ROW_FAIL "row-fail"
+#define FIN "fin"
+#define FIN_ACK "fin-ack"
+#define LEDS_BLACK "set-leds-black"
+#define LEDS_WHITE "set-leds-white"
+#define LEDS_RED "set-leds-red"
+#define LEDS_GREEN "set-leds-green"
+#define LEDS_BLUE "set-leds-blue"
 
 SoftwareSerial bluetoothManager(9, 10); // RX | TX
 CRGB leds[NUM_LEDS];
 
-struct RowData {
-  uint8_t rowNumber;
-  CRGB pixels[16] = {0x000000, 0x008000, 0x000000, 0x008000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000};
-};
-RowData receivedRow;
+char incomingMessage[50];
+int messageIndex = 0;
 
-const char SYN[] = "syn";
-const char SYN_ACK[] = "syn-ack";
-const char ACK[] = "ack";
-const char ROW_SUCCESS[] = "row-success";
-const char ROW_FAIL[] = "row-fail";
-const char FIN[] = "fin";
-const char FIN_ACK[] = "fin-ack";
-String incomingMessage = "";
 
 void setup() {
-	FastLED.setBrightness(20);
+  incomingMessage[0] = '\0';
+	FastLED.setBrightness(10);
 	FastLED.addLeds<WS2812B, LEDS_DATA_PIN, GRB > (leds, NUM_LEDS);
 	Serial.begin(9600);
 	bluetoothManager.begin(9600);
@@ -40,140 +42,178 @@ void loop() {
 	while (bluetoothManager.available()) {
         char c = bluetoothManager.read();
         if (c == '\n' || c == '\r') {
-            if (incomingMessage.length() > 0) {
-
+            if (messageIndex > 0) {
+                incomingMessage[messageIndex] = '\0';
                 processMessage(incomingMessage);
-                incomingMessage = "";  // Clear buffer for next message
+                memset(incomingMessage, 0, sizeof(incomingMessage));  // Clear the buffer
+                messageIndex = 0;  // Reset the index
             }
         } else {
-            incomingMessage += c;
+          if (messageIndex < sizeof(incomingMessage) - 1) { // Ensure we don't overflow the buffer
+                incomingMessage[messageIndex++] = c;
+          }
         }
-    }
+  }
 }
 
-void processMessage(String& message) {
+void processMessage(char* message) {
+  
+  const char* dataPrefix = "data:";
     Serial.println("processMessage(): Received message: ");
     Serial.println(message);
 
-    if (message == SYN) {
+    if (strcmp(message, SYN) == 0) {
         Serial.println("Sending SYN-ACK");
-        bluetoothManager.println(SYN_ACK);  // Send SYN-ACK with newline for better recognition
-    } else if (message == SYN_ACK) {
+        bluetoothManager.write(SYN_ACK);  // Send SYN-ACK with newline for better recognition
+    } else if (strcmp(message, SYN_ACK) == 0 ) {
         Serial.println("Sending ACK");
-        bluetoothManager.println(ACK);  // Send ACK with newline for better recognition
-    } else if (message.startsWith("data:")) {
+        bluetoothManager.write(ACK);  // Send ACK with newline for better recognition
 
-        Serial.println("Received data message");
-        bluetoothManager.println(ROW_SUCCESS);  // remove after half-rows are good to send
+    } else if (strncmp(message, dataPrefix, strlen(dataPrefix)) == 0) {
 
-      if(checkCheckSum(message.substring(5).c_str())) { // message.substring(5) returns message from 5th char onwards
-        bluetoothManager.println(ROW_SUCCESS);  // Send data acknowledgment
+      char* dataPart = message + strlen(dataPrefix);
+
+        Serial.println("dataPart:");
+        Serial.println(dataPart);
+
+      bool checksum_result = checkCheckSum(dataPart);
+      if(checksum_result) { // message.substring(5) returns message from 5th char onwards
+        bluetoothManager.write(PIXEL_SUCCESS);  // Send data acknowledgment
       }
       else {
-        bluetoothManager.println(ROW_FAIL);  // Send data acknowledgment
+        bluetoothManager.write(PIXEL_FAIL);  // Send data acknowledgment
       }
 
-    } else if (message == FIN) {
+    } else if (strcmp(message, FIN) == 0) {
         Serial.println("Sending FIN-ACK");
         bluetoothManager.println(FIN_ACK);  // Send FIN-ACK with newline
-        //displayRow();
-    } else {
+        FastLED.show(5);
+    }
+    else if (strcmp(message, LEDS_BLACK) == 0) {
+        Serial.println("set-leds-black");
+        setLedsColor(CRGB::Black);
+    }
+    else if (strcmp(message, LEDS_WHITE) == 0) {
+        Serial.println("set-leds-white");
+        setLedsColor(CRGB::White);
+    } 
+    else if (strcmp(message, LEDS_RED) == 0) {
+        Serial.println("set-leds-red");
+        setLedsColor(CRGB::Red);
+    }
+    else if (strcmp(message, LEDS_GREEN) == 0) {
+        Serial.println("set-leds-green");
+        setLedsColor(CRGB::Green);
+    }
+    else if (strcmp(message, LEDS_BLUE) == 0) {
+        Serial.println("set-leds-blue");
+        setLedsColor(CRGB::Blue);
+    }
+    else {
         Serial.print("Unknown message: ");
         Serial.println(message);
     }
 }
 
-void processRow(const char* message) {
-	int index = 0;
-  
-  // Extract 32 bits (4 bytes) for each pixel
-  char rowByte[9];
-  strncpy(rowByte, message, 8);
-  rowByte[8] = '\0'; // Null-terminate the string
-  receivedRow.rowNumber = binaryToDecimal(rowByte);
+void processPixel(const char* pixelData) {
+  Serial.println("entered processPixel()");
 
-  for(uint8_t i = 0; i < MATRIX_SIZE; i++) {
-    char rByte[9];
-    char gByte[9];
-    char bByte[9];
+  char rowByte[5];
+  char columnByte[5];
 
-    strncpy(rByte, message + index + 8, 8);
-    rByte[8] = '\0'; // Null-terminate the string
+  strncpy(rowByte, pixelData, 4);
+  strncpy(columnByte, pixelData + 4, 4);
 
-    strncpy(gByte, message + index + 16, 8);
-    gByte[8] = '\0'; // Null-terminate the string
+  rowByte[4] = '\0';    // Null-terminate the string
+  columnByte[4] = '\0'; // Null-terminate the string
 
-    strncpy(bByte, message + index + 24, 8);
-    bByte[8] = '\0'; // Null-terminate the string
+  int rowNumber = binaryToDecimal(rowByte, 4);
+  //receivedRow.rowNumber = rowNumber;
 
-    uint8_t r = binaryToDecimal(rByte);
-    uint8_t g = binaryToDecimal(gByte);
-    uint8_t b = binaryToDecimal(bByte);
+  char rByte[9];
+  char gByte[9];
+  char bByte[9];
 
-    receivedRow.pixels[i] = CRGB(r, g, b);
+  strncpy(rByte, pixelData + 8, 8);
+  rByte[8] = '\0'; // Null-terminate the string
 
-    // Move to the next set of 32 bits
-    index += 32;
-  }
-}
+  strncpy(gByte, pixelData + 16, 8);
+  gByte[8] = '\0'; // Null-terminate the string
 
-uint8_t binaryToDecimal(const char* binaryString) {
-    uint8_t result = 0;
-    for (int i = 0; i < 8; i++) {
-        result = (result << 1) | (binaryString[i] - '0');
+  strncpy(bByte, pixelData + 24, 8);
+  bByte[8] = '\0'; // Null-terminate the string
+
+  int r = binaryToDecimal(rByte, 8);
+  int g = binaryToDecimal(gByte, 8);
+  int b = binaryToDecimal(bByte, 8);
+
+
+  int index; //= rowNumber*MATRIX_SIZE + binaryToDecimal(columnByte, 4);
+    if (rowNumber % 2 == 1) {
+        // Even rows (0, 2, 4, ...) - Left to Right
+        index = rowNumber * MATRIX_SIZE + binaryToDecimal(columnByte, 4);
+    } else {
+        // Odd rows (1, 3, 5, ...) - Right to Left
+        index = rowNumber * MATRIX_SIZE + (MATRIX_SIZE - 1 - binaryToDecimal(columnByte, 4));
+    }
+    
+    // Set the LED color
+    leds[index].setRGB(r, g, b);
+
+  // Serial.print("r: ");
+  // Serial.println(r);
+  // Serial.print("g: ");
+  // Serial.println(g);
+  // Serial.print("b: ");
+  // Serial.println(b);
+
+  // receivedRow.r[binaryToDecimal(columnByte, 4)] = r;
+  // receivedRow.g[binaryToDecimal(columnByte, 4)] = g;
+  // receivedRow.b[binaryToDecimal(columnByte, 4)] = b;
+} 
+
+
+int binaryToDecimal(const char* binaryString, size_t length) {
+    int result = 0;
+    for (size_t i = 0; i < length; i++) {
+        if (binaryString[i] == '1') {
+            result = (result << 1) | 1;
+        } else {
+            result = (result << 1) | 0;
+        }
     }
     return result;
 }
-
 bool checkCheckSum(char* message) {
+  Serial.println("Entered checkCheckSum()");
 
-  char binaryString[273]; // +1 for the null terminator //(8*4 + 2)*8 = 272 (half_row_size*bytes_per_pixel + bytes_checksum)*bits*per*byte
+  char binaryData[PIXEL_BINARY_CHAR_SIZE];
 
-  hexstring_to_binaryCharArray(message, binaryString);
+  hexData_to_binaryData(message, binaryData);
 
-  // Serial.println("Binary String:");
-  // Serial.println(binaryString);
+  Serial.println("Binary String:");
+  Serial.println(binaryData);
 
-	const char result[9];
-	checkSum(binaryString, BLOCK_SIZE, result);
+	char result[5];
+	checkSum(binaryData, BLOCK_SIZE, result);
 
   Serial.print("Calculated Checksum: ");
   Serial.println(result);
 
-	if(checker(result, BLOCK_SIZE)) {
-    Serial.println("Row is checker success");
-		// processRow(binaryString);
-		return true;
-	} else {
-      Serial.println("Row is checker fail");
-		return false;
-	} 
-}
 
-bool checker(char* message, uint8_t block_size) {
-	uint8_t count_zeros = 0;
-	for (uint8_t i = 0; i < block_size; i++) {
-		if (message[i] == '0') {
-			count_zeros++;
-		}
+	if(result_checker(result, BLOCK_SIZE)) {
+    Serial.println("Pixel is checked: success");
+		processPixel(binaryData);
+		return true;
 	}
 
-  return (count_zeros == block_size);
+  Serial.println("Pixel is checked: fail");
+  return false;
 }
+
 
 void setLedsColor(CRGB color) {
-  for ( uint8_t counter = 0; counter < NUM_LEDS; counter++) {
-    leds[counter] = color;
-    FastLED.show();
-    // delay(1);
-  }
+  FastLED.showColor(color, 5);
+  delay(10);
+
 } 
-
-void displayRow() {
-  uint8_t led_index = receivedRow.rowNumber * MATRIX_SIZE;
-  for (uint8_t col = 0; col < MATRIX_SIZE; col++) {
-      leds[led_index + col] = receivedRow.pixels[col];
-  }
-
-  FastLED.show();
-}

@@ -1,5 +1,8 @@
-//1_PIXEL * 4_bytes(position,R,G,B) * 8bits(per Byte) + 4bits(1Byte for checksum) + "\0"
-#define PIXEL_BINARY_CHAR_SIZE 37 
+#define MAX_BINARY_STRING_LENGTH 521
+// 16*4*2*4 + 8 = 520 + '\0' = 521
+//[pixels] * [bytes/pixel] * [chars/byte] * [bits/char] + [8 checksum bits] + '\0' = 521
+
+
 
 void Ones_complement(char* data) {
     for (int i = 0; i < strlen(data); i++) {
@@ -9,6 +12,7 @@ void Ones_complement(char* data) {
             data[i] = '0';
     }
 }
+
 
 // Function to return the checksum value of
 // the given string when divided in K size blocks
@@ -104,3 +108,4 @@ void hexData_to_binaryData(const char* hexData, char* binaryData) {
         }
     }
 }
+
