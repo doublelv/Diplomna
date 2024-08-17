@@ -20,15 +20,11 @@ import com.example.projectcolor.bluetooth.BluetoothManager
 
 @Composable
 fun MainScreen() {
-
     val context = LocalContext.current
-    val bluetoothManager = remember { BluetoothManager(context)}
+    val bluetoothManager = remember { BluetoothManager(context) }
     val pixelGridMatrix = remember { mutableStateOf(RGBMatrix(16, 16)) }
     var isConnected by remember { mutableStateOf(false) }
-    val selectedColor = remember { mutableStateOf<Color?>(Color.Red) }
-    val onColorSelected: (Color) -> Unit = { color ->
-        selectedColor.value = color
-    }
+    val selectedColor = remember { mutableStateOf(Color.Red) } // State<Color>
 
     Scaffold { innerPadding ->
         Column(
@@ -38,23 +34,46 @@ fun MainScreen() {
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             SizeDisplay()
+
             Spacer(modifier = Modifier.weight(1f))
+
             BluetoothConnectionIndicator(
                 bluetoothManager = bluetoothManager,
                 isConnected = isConnected,
-                onConnectClick = { isConnected = true},
-                onDisconnectClick = { isConnected = false})
+                onConnectClick = {
+                    // Handle Bluetooth connection
+                    if (!isConnected) {
+                        bluetoothManager.startDiscovery()
+                        isConnected = true
+                    }
+                },
+                onDisconnectClick = {
+                    // Handle Bluetooth disconnection
+                    if (isConnected) {
+                        bluetoothManager.cancelConnection()
+                        isConnected = false
+                    }
+                }
+            )
+
             Spacer(modifier = Modifier.weight(1f))
-            ColorPickerButtons(onColorSelected = onColorSelected)
+
+            ColorPickerButtons(onColorSelected = { color ->
+                selectedColor.value = color // Update the mutable state
+            })
+
             PixelGrid(
-                modifier = Modifier.fillMaxWidth(1f),
-                selectedColor = selectedColor,
+                modifier = Modifier.fillMaxWidth(),
+                selectedColor = selectedColor, // Pass the state
                 size = 16,
-                matrix = pixelGridMatrix)
+                matrix = pixelGridMatrix
+            )
+
             SendButton(
                 bluetoothManager = bluetoothManager,
                 modifier = Modifier.align(Alignment.CenterHorizontally),
-                matrix = pixelGridMatrix)
+                matrix = pixelGridMatrix
+            )
         }
     }
 }

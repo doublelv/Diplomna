@@ -157,6 +157,7 @@ fun handshakeSendSinglePixelsOneByOne(
                     return false
                 }
             }
+//            Toast.makeText(context, "Sent row $row", Toast.LENGTH_SHORT).show()
         }
         return true
     }

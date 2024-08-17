@@ -23,6 +23,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import java.io.IOException
 import java.io.InputStream
@@ -36,18 +37,19 @@ class BluetoothManager(private val context: Context) {
     private val _discoveredDevices = MutableLiveData<Set<BluetoothDevice>>(emptySet())
     val discoveredDevices: LiveData<Set<BluetoothDevice>> = _discoveredDevices
     private val discoveredDevicesSet = mutableSetOf<BluetoothDevice>()
-    private val MY_UUID: UUID = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB") // Example UUID
+    private val myUUID: UUID = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB") // Example UUID
     private var connectJob: Job? = null
     private var sendJob: Job? = null
     private val connectionTimeout = 10_000L // Timeout in milliseconds
-    private val sendInterval = 1_000L // Interval to send data (1 second)
     private var bluetoothSocket: BluetoothSocket? = null
     private var outputStream: OutputStream? = null
     private var inputStream: InputStream? = null
 
+    companion object {
+        private const val TAG = "BluetoothManager"
+    }
 
     private val discoveryReceiver = object : BroadcastReceiver() {
-
         override fun onReceive(context: Context?, intent: Intent?) {
             val action = intent?.action
             if (BluetoothDevice.ACTION_FOUND == action) {
@@ -140,7 +142,11 @@ class BluetoothManager(private val context: Context) {
             if (adapter.isDiscovering) {
                 adapter.cancelDiscovery()
             }
-            context.unregisterReceiver(discoveryReceiver)
+            try {
+                context.unregisterReceiver(discoveryReceiver)
+            } catch (e: IllegalArgumentException) {
+                Log.e(TAG, "Receiver not registered or already unregistered", e)
+            }
         }
     }
 
@@ -152,46 +158,33 @@ class BluetoothManager(private val context: Context) {
     }
 
     fun connectToDevice(device: BluetoothDevice, onConnectionResult: (Boolean) -> Unit) {
+        connectJob?.cancel() // Cancel previous job if any
+
         connectJob = CoroutineScope(Dispatchers.IO).launch {
             try {
-                // Create a Bluetooth socket to the device
-                bluetoothSocket = device.createRfcommSocketToServiceRecord(MY_UUID)
-                bluetoothSocket?.connect()
+                bluetoothSocket = device.createRfcommSocketToServiceRecord(myUUID).apply {
+                    connect()
+                }
 
-                // Get the output stream
                 outputStream = bluetoothSocket?.outputStream
-
-                // Get the input stream
                 inputStream = bluetoothSocket?.inputStream
 
-                // Notify success
                 withContext(Dispatchers.Main) {
                     onConnectionResult(true)
                 }
-
-                // Start sending data
-//                startSendingData()
             } catch (e: IOException) {
-                // Notify failure
+                Log.e(TAG, "Connection failed: ${e.message}", e)
                 withContext(Dispatchers.Main) {
                     onConnectionResult(false)
                 }
-                // Log error
-                Log.e("BluetoothManager", "Connection failed: ${e.message}", e)
             } finally {
                 if (bluetoothSocket?.isConnected == false) {
-                    try {
-                        bluetoothSocket?.close()
-                    } catch (e: IOException) {
-                        Log.e("BluetoothManager", "Error closing socket", e)
-                    } finally {
-                        bluetoothSocket = null
-                    }
+                    bluetoothSocket?.closeSilently()
+                    bluetoothSocket = null
                 }
             }
         }
 
-        // Cancel the job if it takes too long
         connectJob?.let { job ->
             CoroutineScope(Dispatchers.IO).launch {
                 delay(connectionTimeout)
@@ -205,54 +198,49 @@ class BluetoothManager(private val context: Context) {
         }
     }
 
-    private fun startSendingData() {
-        sendJob = CoroutineScope(Dispatchers.IO).launch {
-            while (true) {
-                delay(sendInterval)
-//                sendData("hello\n")
-            }
-        }
-    }
-
     fun isConnected(): Boolean {
-        return bluetoothSocket?.isConnected == true
+        return bluetoothSocket?.isConnected ?: false
     }
 
     fun sendData(message: String) {
         if (bluetoothSocket == null || bluetoothSocket?.isConnected == false) {
-            Log.e("BluetoothManager", "Cannot send data: socket is not connected")
+            Log.e(TAG, "Cannot send data: socket is not connected")
             return
         }
 
         try {
-            Log.d("BluetoothManager", "Sending data: $message")
+            Log.d(TAG, "Sending data: $message")
             bluetoothSocket?.outputStream?.write((message + "\n").toByteArray())  // Adding newline to delimit messages
         } catch (e: IOException) {
-            Log.e("BluetoothManager", "Failed to send data: ${e.message}", e)
+            Log.e(TAG, "Failed to send data: ${e.message}", e)
             // Optionally, handle socket reinitialization or reconnection here
         }
     }
 
     fun receiveData(timeoutMillis: Long = 5000L): String? {
-        if (bluetoothSocket == null || bluetoothSocket?.isConnected == false) {
-            Log.e("BluetoothManager", "Cannot receive data: socket is not connected")
-            return null
-        }
+        return runBlocking {
+            withContext(Dispatchers.IO) {
+                if (bluetoothSocket == null || bluetoothSocket?.isConnected == false) {
+                    Log.e(TAG, "Cannot receive data: socket is not connected")
+                    return@withContext null
+                }
 
-        val startTime = System.currentTimeMillis()
-        while (System.currentTimeMillis() - startTime < timeoutMillis) {
-            val available = bluetoothSocket?.inputStream?.available() ?: 0
-            if (available > 0) {
-                val buffer = ByteArray(available)
-                bluetoothSocket?.inputStream?.read(buffer)
-                val response = String(buffer).trim()  // Trim whitespace and newlines
-                Log.d("BluetoothManager", "Received data: $response")
-                return response
+                val startTime = System.currentTimeMillis()
+                while (System.currentTimeMillis() - startTime < timeoutMillis) {
+                    val available = bluetoothSocket?.inputStream?.available() ?: 0
+                    if (available > 0) {
+                        val buffer = ByteArray(available)
+                        bluetoothSocket?.inputStream?.read(buffer)
+                        val response = String(buffer).trim()  // Trim whitespace and newlines
+                        Log.d(TAG, "Received data: $response")
+                        return@withContext response
+                    }
+                    delay(50)  // Small delay to avoid busy-waiting
+                }
+                Log.d(TAG, "Timeout waiting for response")
+                return@withContext null
             }
-            Thread.sleep(50)  // Small delay to avoid busy-waiting
         }
-        Log.d("BluetoothManager", "Timeout waiting for response")
-        return null
     }
 
 
@@ -263,12 +251,20 @@ class BluetoothManager(private val context: Context) {
             connectJob = null
             sendJob = null
             outputStream?.close()
-            bluetoothSocket?.close()
+            bluetoothSocket?.closeSilently()
         } catch (e: IOException) {
-            Log.e("BluetoothManager", "Error closing socket or stream: ${e.message}", e)
+            Log.e(TAG, "Error closing socket or stream: ${e.message}", e)
         } finally {
             outputStream = null
             bluetoothSocket = null
+        }
+    }
+
+    private fun BluetoothSocket?.closeSilently() {
+        try {
+            this?.close()
+        } catch (e: IOException) {
+            Log.e(TAG, "Error closing socket", e)
         }
     }
 }
