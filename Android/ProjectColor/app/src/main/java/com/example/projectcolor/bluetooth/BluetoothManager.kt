@@ -249,7 +249,7 @@ class BluetoothManager(private val context: Context) {
                 Log.d("BluetoothManager", "Received data: $response")
                 return response
             }
-            Thread.sleep(100)  // Small delay to avoid busy-waiting
+            Thread.sleep(50)  // Small delay to avoid busy-waiting
         }
         Log.d("BluetoothManager", "Timeout waiting for response")
         return null

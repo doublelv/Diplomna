@@ -59,22 +59,22 @@ void loop() {
 void processMessage(char* message) {
   
   const char* dataPrefix = "data:";
-    Serial.println("processMessage(): Received message: ");
-    Serial.println(message);
+    // Serial.println("processMessage(): Received message: ");
+    // Serial.println(message);
 
     if (strcmp(message, SYN) == 0) {
-        Serial.println("Sending SYN-ACK");
+        // Serial.println("Sending SYN-ACK");
         bluetoothManager.write(SYN_ACK);  // Send SYN-ACK with newline for better recognition
     } else if (strcmp(message, SYN_ACK) == 0 ) {
-        Serial.println("Sending ACK");
+        // Serial.println("Sending ACK");
         bluetoothManager.write(ACK);  // Send ACK with newline for better recognition
 
     } else if (strncmp(message, dataPrefix, strlen(dataPrefix)) == 0) {
 
       char* dataPart = message + strlen(dataPrefix);
 
-        Serial.println("dataPart:");
-        Serial.println(dataPart);
+        // Serial.println("dataPart:");
+        // Serial.println(dataPart);
 
       bool checksum_result = checkCheckSum(dataPart);
       if(checksum_result) { // message.substring(5) returns message from 5th char onwards
@@ -85,16 +85,16 @@ void processMessage(char* message) {
       }
 
     } else if (strcmp(message, FIN) == 0) {
-        Serial.println("Sending FIN-ACK");
+        // Serial.println("Sending FIN-ACK");
         bluetoothManager.println(FIN_ACK);  // Send FIN-ACK with newline
-        FastLED.show(5);
+        FastLED.show(50);
     }
     else if (strcmp(message, LEDS_BLACK) == 0) {
-        Serial.println("set-leds-black");
+        // Serial.println("set-leds-black");
         setLedsColor(CRGB::Black);
     }
     else if (strcmp(message, LEDS_WHITE) == 0) {
-        Serial.println("set-leds-white");
+        // Serial.println("set-leds-white");
         setLedsColor(CRGB::White);
     } 
     else if (strcmp(message, LEDS_RED) == 0) {
@@ -102,11 +102,11 @@ void processMessage(char* message) {
         setLedsColor(CRGB::Red);
     }
     else if (strcmp(message, LEDS_GREEN) == 0) {
-        Serial.println("set-leds-green");
+        // Serial.println("set-leds-green");
         setLedsColor(CRGB::Green);
     }
     else if (strcmp(message, LEDS_BLUE) == 0) {
-        Serial.println("set-leds-blue");
+        // Serial.println("set-leds-blue");
         setLedsColor(CRGB::Blue);
     }
     else {
@@ -116,7 +116,7 @@ void processMessage(char* message) {
 }
 
 void processPixel(const char* pixelData) {
-  Serial.println("entered processPixel()");
+  // Serial.println("entered processPixel()");
 
   char rowByte[5];
   char columnByte[5];
@@ -185,35 +185,35 @@ int binaryToDecimal(const char* binaryString, size_t length) {
     return result;
 }
 bool checkCheckSum(char* message) {
-  Serial.println("Entered checkCheckSum()");
+  // Serial.println("Entered checkCheckSum()");
 
   char binaryData[PIXEL_BINARY_CHAR_SIZE];
 
   hexData_to_binaryData(message, binaryData);
 
-  Serial.println("Binary String:");
-  Serial.println(binaryData);
+  // Serial.println("Binary String:");
+  // Serial.println(binaryData);
 
 	char result[5];
 	checkSum(binaryData, BLOCK_SIZE, result);
 
-  Serial.print("Calculated Checksum: ");
-  Serial.println(result);
+  // Serial.print("Calculated Checksum: ");
+  // Serial.println(result);
 
 
 	if(result_checker(result, BLOCK_SIZE)) {
-    Serial.println("Pixel is checked: success");
+    // Serial.println("Pixel is checked: success");
 		processPixel(binaryData);
 		return true;
 	}
 
-  Serial.println("Pixel is checked: fail");
+  // Serial.println("Pixel is checked: fail");
   return false;
 }
 
 
 void setLedsColor(CRGB color) {
-  FastLED.showColor(color, 5);
+  FastLED.showColor(color, 50);
   delay(10);
 
 } 
