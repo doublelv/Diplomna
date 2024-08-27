@@ -15,6 +15,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.example.projectcolor.RGBMatrix
 import com.example.projectcolor.bluetooth.BluetoothManager
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 // Button to send the matrix data to the device
 @Composable
@@ -35,7 +38,9 @@ fun SendButton(
                 .padding(horizontal = 4.dp)
             ,
             onClick = {
-                handshakeSendSinglePixelsOneByOne(matrix, bluetoothManager, context);
+                CoroutineScope(Dispatchers.Main).launch {
+                    handshakeSendSinglePixelsOneByOne(matrix, bluetoothManager, context);
+                }
             },
             enabled = isBluetoothConnected
         ) {
@@ -105,7 +110,7 @@ fun SendButton(
 }
 
 
-fun handshakeSendSinglePixelsOneByOne(
+suspend fun handshakeSendSinglePixelsOneByOne(
     matrix: MutableState<RGBMatrix>,
     bluetoothManager: BluetoothManager,
     context: Context // Add context to show Toast messages
@@ -114,7 +119,7 @@ fun handshakeSendSinglePixelsOneByOne(
     val timeoutMillis = 5000L
     var retryCount = 0
 
-    fun performHandshake(): Boolean {
+    suspend fun performHandshake(): Boolean {
         while (retryCount < retryLimit && bluetoothManager.isConnected()) {
             bluetoothManager.sendData("syn")
             Log.d("SendButton", "SYN sent, waiting for SYN-ACK...")
@@ -138,7 +143,7 @@ fun handshakeSendSinglePixelsOneByOne(
         return false
     }
 
-    fun sendMatrixPixelByPixel(): Boolean {
+    suspend fun sendMatrixPixelByPixel(): Boolean {
         for (row in 0 until 1 * matrix.value.height) {
             for (column in 0 until matrix.value.width) {
                 var tryCount = 0
@@ -162,7 +167,7 @@ fun handshakeSendSinglePixelsOneByOne(
         return true
     }
 
-    fun terminateConnection() {
+    suspend fun terminateConnection() {
         bluetoothManager.sendData("fin")
         Log.d("SendButton", "FIN sent, waiting for FIN-ACK...")
 //        Toast.makeText(context, "FIN sent, waiting for FIN-ACK...", Toast.LENGTH_SHORT).show()

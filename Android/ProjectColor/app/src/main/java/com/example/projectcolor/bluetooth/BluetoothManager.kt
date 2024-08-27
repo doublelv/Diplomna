@@ -23,7 +23,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import java.io.IOException
 import java.io.InputStream
@@ -217,31 +216,36 @@ class BluetoothManager(private val context: Context) {
         }
     }
 
-    fun receiveData(timeoutMillis: Long = 5000L): String? {
-        return runBlocking {
-            withContext(Dispatchers.IO) {
-                if (bluetoothSocket == null || bluetoothSocket?.isConnected == false) {
-                    Log.e(TAG, "Cannot receive data: socket is not connected")
-                    return@withContext null
-                }
+    suspend fun receiveData(timeoutMillis: Long = 5000L): String? {
+        val socket = bluetoothSocket
+        if (socket == null || !socket.isConnected) {
+            Log.e(TAG, "Cannot receive data: socket is not connected")
+            return null
+        }
 
+        return withContext(Dispatchers.IO) {
+            val inputStream = socket.inputStream
+            try {
                 val startTime = System.currentTimeMillis()
                 while (System.currentTimeMillis() - startTime < timeoutMillis) {
-                    val available = bluetoothSocket?.inputStream?.available() ?: 0
+                    val available = inputStream.available()
                     if (available > 0) {
                         val buffer = ByteArray(available)
-                        bluetoothSocket?.inputStream?.read(buffer)
-                        val response = String(buffer).trim()  // Trim whitespace and newlines
+                        inputStream.read(buffer)
+                        val response = String(buffer).trim()
                         Log.d(TAG, "Received data: $response")
                         return@withContext response
                     }
-                    delay(50)  // Small delay to avoid busy-waiting
+                    delay(50)
                 }
                 Log.d(TAG, "Timeout waiting for response")
-                return@withContext null
+            } catch (e: IOException) {
+                Log.e(TAG, "Error reading from input stream", e)
             }
+            null
         }
     }
+
 
 
     fun cancelConnection() {
