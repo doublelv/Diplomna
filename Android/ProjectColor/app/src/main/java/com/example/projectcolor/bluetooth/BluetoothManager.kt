@@ -23,6 +23,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import java.io.IOException
 import java.io.InputStream
@@ -216,36 +217,37 @@ class BluetoothManager(private val context: Context) {
         }
     }
 
-    suspend fun receiveData(timeoutMillis: Long = 5000L): String? {
-        val socket = bluetoothSocket
-        if (socket == null || !socket.isConnected) {
-            Log.e(TAG, "Cannot receive data: socket is not connected")
-            return null
-        }
-
-        return withContext(Dispatchers.IO) {
-            val inputStream = socket.inputStream
-            try {
-                val startTime = System.currentTimeMillis()
-                while (System.currentTimeMillis() - startTime < timeoutMillis) {
-                    val available = inputStream.available()
-                    if (available > 0) {
-                        val buffer = ByteArray(available)
-                        inputStream.read(buffer)
-                        val response = String(buffer).trim()
-                        Log.d(TAG, "Received data: $response")
-                        return@withContext response
-                    }
-                    delay(50)
-                }
-                Log.d(TAG, "Timeout waiting for response")
-            } catch (e: IOException) {
-                Log.e(TAG, "Error reading from input stream", e)
+    fun receiveData(timeoutMillis: Long = 5000L): String? {
+        return runBlocking {
+            val socket = bluetoothSocket
+            if (socket == null || !socket.isConnected) {
+                Log.e(TAG, "Cannot receive data: socket is not connected")
+                return@runBlocking null
             }
-            null
+
+            withContext(Dispatchers.IO) {
+                val inputStream = socket.inputStream
+                try {
+                    val startTime = System.currentTimeMillis()
+                    while (System.currentTimeMillis() - startTime < timeoutMillis) {
+                        val available = inputStream.available()
+                        if (available > 0) {
+                            val buffer = ByteArray(available)
+                            inputStream.read(buffer)
+                            val response = String(buffer).trim()
+                            Log.d(TAG, "Received data: $response")
+                            return@withContext response
+                        }
+                        delay(25)
+                    }
+                    Log.d(TAG, "Timeout waiting for response")
+                } catch (e: IOException) {
+                    Log.e(TAG, "Error reading from input stream", e)
+                }
+                null
+            }
         }
     }
-
 
 
     fun cancelConnection() {

@@ -1,5 +1,14 @@
-//1_PIXEL * 4_bytes(position,R,G,B) * 8bits(per Byte) + 4bits(1Byte for checksum) + "\0"
-#define PIXEL_BINARY_CHAR_SIZE 36  
+#define PIXEL_BINARY_CHAR_SIZE 36  //1_PIXEL * 4_bytes(position,R,G,B) * 8bits(per Byte) + 4bits(1Byte for checksum)
+#define ROW_HEX_CHAR_SIZE 136 //16_PIXEL * 4_bytes(position,R,G,B) * 2chars(per Byte) + 2chars(1Byte for checksum)
+#define ROW_BINARY_CHAR_SIZE 520 //16_PIXEL * 4_bytes(position,R,G,B) * 8chars(per Byte) + 8chars(1Byte for checksum)
+
+#define HALF_ROW_HEX_CHAR_SIZE 66 //8_PIXEL * 4_bytes(position,R,G,B) * 2chars(per Byte) + 2chars(1Byte for checksum)
+#define HALF_ROW_BINARY_CHAR_SIZE 264 //8_PIXEL * 4_bytes(position,R,G,B) * 8chars(per Byte) + 8chars(1Byte for checksum)
+
+#define QUARTER_ROW_HEX_CHAR_SIZE 34 //4_PIXEL * 4_bytes(position,R,G,B) * 2chars(per Byte) + 2chars(1Byte for checksum)
+#define QUARTER_ROW_BINARY_CHAR_SIZE 136 //4_PIXEL * 4_bytes(position,R,G,B) * 8chars(per Byte) + 8chars(1Byte for checksum)
+
+
 
 void Ones_complement(char* data) {
     for (int i = 0; i < strlen(data); i++) {

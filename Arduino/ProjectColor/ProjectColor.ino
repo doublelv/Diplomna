@@ -6,13 +6,13 @@
 #define MATRIX_SIZE 16
 #define LEDS_DATA_PIN 12
 #define NUM_LEDS 256
-#define BLOCK_SIZE 4
+#define BLOCK_SIZE 8
 
 #define SYN "syn"
 #define SYN_ACK "syn-ack"
 #define ACK "ack"
-#define PIXEL_SUCCESS "PIXEL-SUCCESS"
-#define PIXEL_FAIL "PIXEL-FAIL"
+#define ROW_SUCCESS "ROW-SUCCESS"
+#define ROW_FAIL "ROW-FAIL"
 #define FIN "fin"
 #define FIN_ACK "fin-ack"
 #define LEDS_BLACK "set-leds-black"
@@ -22,20 +22,18 @@
 #define LEDS_BLUE "set-leds-blue"
 
 SoftwareSerial bluetoothManager(9, 10);  // RX | TX
-// AltSoftSerial bluetoothManager(9, 10);  // RX | TX
 CRGB leds[NUM_LEDS];
 
-char incomingMessage[50];
-int messageIndex = 0;
+char incomingMessage[QUARTER_ROW_HEX_CHAR_SIZE + 8];
+uint8_t messageIndex = 0;
+
 
 
 void setup() {
-  //Serial.begin(9600);
+  Serial.begin(9600);
   bluetoothManager.begin(9600);
   incomingMessage[0] = '\0';
-  //FastLED.setBrightness(10);
   FastLED.addLeds<WS2812B, LEDS_DATA_PIN, GRB >(leds, NUM_LEDS);
-
 }
 
 void loop() {
@@ -57,7 +55,10 @@ void loop() {
   }
 }
 
-void processMessage(char* message) {
+void processMessage(char* message) { 
+  Serial.println("entered processMessage()");
+  Serial.println("message:");
+  Serial.println(message);
 
   const char* dataPrefix = "data:";
 
@@ -75,11 +76,10 @@ void processMessage(char* message) {
 
     bool checksum_result = checkCheckSum(dataPart);
     if (checksum_result) {
-      bluetoothManager.write(PIXEL_SUCCESS);
+      bluetoothManager.write(ROW_SUCCESS);
     } else {
-      bluetoothManager.write(PIXEL_FAIL);
+      bluetoothManager.write(ROW_FAIL);
     }
-
   }
 
   else if (strcmp(message, FIN) == 0) {
@@ -113,8 +113,19 @@ void processMessage(char* message) {
   }
 }
 
-void processPixel(const char* pixelData) {
+void processRow(const char* rowData) {
+  for(uint8_t pixelIndex = 0; pixelIndex < 16; pixelIndex++) {
+    processPixel(rowData + pixelIndex * 16);
+  }
+}
 
+void processQuarterRow(const char* rowData) {
+  for(uint8_t pixelIndex = 0; pixelIndex < 4; pixelIndex++) {
+    processPixel(rowData + pixelIndex * 32); // 4 pixels, each with 4 bytes of information = 32 bits of binary storage
+  }
+}
+
+void processPixel(const char* pixelData) {
   char rowByte[5];
   char columnByte[5];
 
@@ -124,7 +135,7 @@ void processPixel(const char* pixelData) {
   rowByte[4] = '\0';     // Null-terminate the string
   columnByte[4] = '\0';  // Null-terminate the string
 
-  int rowNumber = binaryToDecimal(rowByte, 4);
+  uint8_t rowNumber = binaryToDecimal(rowByte, 4);
   //receivedRow.rowNumber = rowNumber;
 
   char rByte[9];
@@ -140,12 +151,12 @@ void processPixel(const char* pixelData) {
   strncpy(bByte, pixelData + 24, 8);
   bByte[8] = '\0';  // Null-terminate the string
 
-  int r = binaryToDecimal(rByte, 8);
-  int g = binaryToDecimal(gByte, 8);
-  int b = binaryToDecimal(bByte, 8);
+  uint8_t r = binaryToDecimal(rByte, 8);
+  uint8_t g = binaryToDecimal(gByte, 8);
+  uint8_t b = binaryToDecimal(bByte, 8);
 
 
-  int index;  //= rowNumber*MATRIX_SIZE + binaryToDecimal(columnByte, 4);
+  uint8_t index;  //= rowNumber*MATRIX_SIZE + binaryToDecimal(columnByte, 4);
   if (rowNumber % 2 == 1) {
     // Even rows (0, 2, 4, ...) - Left to Right
     index = rowNumber * MATRIX_SIZE + binaryToDecimal(columnByte, 4);
@@ -159,8 +170,8 @@ void processPixel(const char* pixelData) {
 }
 
 
-int binaryToDecimal(const char* binaryString, size_t length) {
-  int result = 0;
+uint8_t binaryToDecimal(const char* binaryString, size_t length) {
+  uint8_t result = 0;
   for (size_t i = 0; i < length; i++) {
     if (binaryString[i] == '1') {
       result = (result << 1) | 1;
@@ -170,16 +181,17 @@ int binaryToDecimal(const char* binaryString, size_t length) {
   }
   return result;
 }
-bool checkCheckSum(char* message) {
 
-  char binaryData[PIXEL_BINARY_CHAR_SIZE + 1];
+bool checkCheckSum(char* message) {
+  char binaryData[QUARTER_ROW_BINARY_CHAR_SIZE + 1];
+
   hexData_to_binaryData(message, binaryData);
 
-  char result[5];
+  char result[9];
   checkSum(binaryData, BLOCK_SIZE, result);
 
   if (result_checker(result, BLOCK_SIZE)) {
-    processPixel(binaryData);
+    processQuarterRow(binaryData);
     return true;
   }
   return false;

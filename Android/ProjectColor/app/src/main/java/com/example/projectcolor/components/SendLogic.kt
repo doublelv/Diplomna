@@ -1,7 +1,9 @@
 package com.example.projectcolor.components
 
 import android.util.Log
+import androidx.compose.runtime.MutableState
 import com.example.projectcolor.PixelData
+import com.example.projectcolor.RGBMatrix
 import com.example.projectcolor.bluetooth.BluetoothManager
 import java.io.IOException
 
@@ -13,12 +15,12 @@ fun addChecksumToPixelData(data: String): String{
     return (data + checksum)
 }
 
-//// Adds checksum to a row of pixel data
-//fun addChecksumToRow(data: String): String{
-//    var checksum = checkSum(hexStringToBinaryString(data), 8)
-//    checksum = checksum.toInt(2).toString(16).padStart(2, '0')
-//    return (data + checksum)
-//}
+// Adds checksum to a row of pixel data
+fun addChecksumToRow(data: String): String{
+    var checksum = checkSum(hexStringToBinaryString(data), 8)
+    checksum = checksum.toInt(2).toString(16).padStart(2, '0')
+    return (data + checksum)
+}
 
 @OptIn(ExperimentalStdlibApi::class)
 fun serializePixel(
@@ -42,61 +44,91 @@ fun serializePixel(
     return byteArrayString
 }
 
-//// Serializes a full row of pixel data into a byte array
-//@OptIn(ExperimentalStdlibApi::class)
-//fun serializeRow(
-//    matrix: MutableState<RGBMatrix>,
-//    row: Int = 0,
-//): String {
-//
-//    val byteArray = ByteArray(4*16)
-//    var index = 0
-//    try {
-//        for (column in 0 until matrix.value.width) {
-//            val pixel = matrix.value.getPixel(row, column)
-//            byteArray[index] = ((row shl 4) + column).toByte()
-//            byteArray[index+1] = (pixel.red * 255f).toInt().toByte()
-//            byteArray[index+2] = (pixel.green * 255f).toInt().toByte()
-//            byteArray[index+3] = (pixel.blue * 255f).toInt().toByte()
-//            index += 4
-//        }
-//    } catch (e: IOException) {
-//        Log.e("MainActivity", "Error serializing matrix", e)
-//    }
-//
-//    var byteArrayString = byteArray.toHexString()
-//    byteArrayString = addChecksumToRow(byteArrayString) + "\n"
-//
-//    return byteArrayString
-//}
+// Serializes a full row of pixel data into a byte array
+@OptIn(ExperimentalStdlibApi::class)
+fun serializeRow(
+    matrix: MutableState<RGBMatrix>,
+    row: Int = 0,
+): String {
 
-//@OptIn(ExperimentalStdlibApi::class)
-//fun serializeHalfRow(
-//    matrix: MutableState<RGBMatrix>,
-//    row: Int = 0,
-//    part: Int = 0,
-//): String {
-//
-//    val byteArray = ByteArray(4*8)
-//    var index = 0
-//    try {
-//        for (column in part * matrix.value.width / 2 until (part * matrix.value.width / 2) + matrix.value.width / 2) {
-//            val pixel = matrix.value.getPixel(row, column)
-//            byteArray[index] = ((row shl 4) + column).toByte()
-//            byteArray[index+1] = (pixel.red * 255f).toInt().toByte()
-//            byteArray[index+2] = (pixel.green * 255f).toInt().toByte()
-//            byteArray[index+3] = (pixel.blue * 255f).toInt().toByte()
-//            index += 4
-//        }
-//    } catch (e: IOException) {
-//        Log.e("MainActivity", "Error serializing matrix", e)
-//    }
-//
-//    var byteArrayString = byteArray.toHexString()
-//    byteArrayString = addChecksumToRow(byteArrayString) + "\n"
-//
-//    return byteArrayString
-//}
+    val byteArray = ByteArray(4*16)
+    var index = 0
+    try {
+        for (column in 0 until matrix.value.width) {
+            val pixel = matrix.value.getPixel(row, column)
+            byteArray[index] = ((row shl 4) + column).toByte()
+            byteArray[index+1] = (pixel.red * 255f).toInt().toByte()
+            byteArray[index+2] = (pixel.green * 255f).toInt().toByte()
+            byteArray[index+3] = (pixel.blue * 255f).toInt().toByte()
+            index += 4
+        }
+    } catch (e: IOException) {
+        Log.e("MainActivity", "Error serializing matrix", e)
+    }
+
+    var byteArrayString = byteArray.toHexString()
+    byteArrayString = addChecksumToRow(byteArrayString) + "\n"
+
+    return byteArrayString
+}
+
+@OptIn(ExperimentalStdlibApi::class)
+fun serializeHalfRow(
+    matrix: MutableState<RGBMatrix>,
+    row: Int = 0,
+    part: Int = 0,
+): String {
+
+    val byteArray = ByteArray(4*8)
+    var index = 0
+    try {
+        for (column in part * matrix.value.width / 2 until (part * matrix.value.width / 2) + matrix.value.width / 2) {
+            val pixel = matrix.value.getPixel(row, column)
+            byteArray[index] = ((row shl 4) + column).toByte()
+            byteArray[index+1] = (pixel.red * 255f).toInt().toByte()
+            byteArray[index+2] = (pixel.green * 255f).toInt().toByte()
+            byteArray[index+3] = (pixel.blue * 255f).toInt().toByte()
+            index += 4
+        }
+    } catch (e: IOException) {
+        Log.e("MainActivity", "Error serializing matrix", e)
+    }
+
+    var byteArrayString = byteArray.toHexString()
+    byteArrayString = addChecksumToRow(byteArrayString) //+ "\n"
+
+    return byteArrayString
+}
+
+@OptIn(ExperimentalStdlibApi::class)
+fun serializeQuarterRow(
+    matrix: MutableState<RGBMatrix>,
+    row: Int = 0,
+    part: Int = 0,
+): String {
+
+    val byteArray = ByteArray(4*4)
+    var index = 0
+    try {
+        for (column in part * matrix.value.width / 4 until (part * matrix.value.width / 4) + matrix.value.width / 4) {
+            val pixel = matrix.value.getPixel(row, column)
+            byteArray[index] = ((row shl 4) + column).toByte()
+            byteArray[index+1] = (pixel.red * 255f).toInt().toByte()
+            byteArray[index+2] = (pixel.green * 255f).toInt().toByte()
+            byteArray[index+3] = (pixel.blue * 255f).toInt().toByte()
+            index += 4
+        }
+    } catch (e: IOException) {
+        Log.e("MainActivity", "Error serializing matrix", e)
+    }
+
+    var byteArrayString = byteArray.toHexString()
+    byteArrayString = addChecksumToRow(byteArrayString) //+ "\n"
+
+    return byteArrayString
+}
+
+
 //
 //// Serializes the full matrix of pixel data into a byte array
 //fun serializeMatrix(matrix: MutableState<RGBMatrix>): String {
@@ -126,44 +158,61 @@ fun sendPixel(
     Log.d("SendButton", "Pixel sent: $fullMessage")
 }
 
-//
-//fun sendHalfRow(
-//    matrix: MutableState<RGBMatrix>,
-//    row: Int,
-//    part: Int, // 0(first half) or 1(second half)
-//    bluetoothManager: BluetoothManager,
-//    addition: String = ""
-//) {
-//    val serializedHalfRow = serializeHalfRow(matrix, row, part)
+fun sendQuarterRow(
+    matrix: MutableState<RGBMatrix>,
+    row: Int,
+    part: Int, // 0(first half) or 1(second half)
+    bluetoothManager: BluetoothManager,
+    addition: String = ""
+) {
+    val serializedQuarterRow = serializeQuarterRow(matrix, row, part)
 //    Log.d("SendButton", "serializedRow: \n$serializedHalfRow")
+
+    // Send the entire row as one message
+    val fullMessage = addition + serializedQuarterRow
+    bluetoothManager.sendData(fullMessage)
+    Log.d("SendButton", "Row $row, part $part message:\n$fullMessage")
+}
+
+
 //
-//    // Send the entire row as one message
-//    val fullMessage = addition + serializedHalfRow
-//    bluetoothManager.sendData(fullMessage)
-//    Log.d("SendButton", "Half row $part sent: $fullMessage")
-//}
+fun sendHalfRow(
+    matrix: MutableState<RGBMatrix>,
+    row: Int,
+    part: Int, // 0(first half) or 1(second half)
+    bluetoothManager: BluetoothManager,
+    addition: String = ""
+) {
+    val serializedHalfRow = serializeHalfRow(matrix, row, part)
+//    Log.d("SendButton", "serializedRow: \n$serializedHalfRow")
+
+    // Send the entire row as one message
+    val fullMessage = addition + serializedHalfRow
+    bluetoothManager.sendData(fullMessage)
+    Log.d("SendButton", "Half row $part sent:\n$fullMessage")
+}
 //
-//fun sendRow(
-//    matrix: MutableState<RGBMatrix>,
-//    row: Int,
-//    bluetoothManager: BluetoothManager,
-//    addition: String = ""
-//) {
-//    val serializedRow = serializeRow(matrix, row)
-//    Log.d("SendButton", "serializedRow: \n$serializedRow")
-//
-//    // Send the entire row as one message
-//    val fullMessage = addition + serializedRow
-//    bluetoothManager.sendData(fullMessage)
-//    Log.d("SendButton", "Full row sent: $fullMessage")
-//}
-//
-//fun sendFullMatrixData(matrix: MutableState<RGBMatrix>, bluetoothManager: BluetoothManager) {
-//    for (row in 0 until matrix.value.height) {
-//        sendRow(matrix, row, bluetoothManager)
-//        Thread.sleep(500)
-//    }
-//}
+fun sendRow(
+    matrix: MutableState<RGBMatrix>,
+    row: Int,
+    bluetoothManager: BluetoothManager,
+    addition: String = ""
+) {
+    val serializedRow = serializeRow(matrix, row)
+    Log.d("SendButton", "serializedRow: \n$serializedRow")
+
+    // Send the entire row as one message
+    val fullMessage = addition + serializedRow
+    bluetoothManager.sendData(fullMessage)
+    Log.d("SendButton", "Full row sent: $fullMessage")
+}
+
+fun sendFullMatrixData(matrix: MutableState<RGBMatrix>, bluetoothManager: BluetoothManager) {
+    for (row in 0 until matrix.value.height) {
+        sendRow(matrix, row, bluetoothManager)
+        Thread.sleep(500)
+    }
+}
 //
 //// TEST
 //fun communicationValidationTest(bluetoothManager: BluetoothManager) {

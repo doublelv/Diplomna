@@ -39,7 +39,7 @@ fun SendButton(
             ,
             onClick = {
                 CoroutineScope(Dispatchers.Main).launch {
-                    handshakeSendSinglePixelsOneByOne(matrix, bluetoothManager, context);
+                    handshakeSendPixelQaurterRows(matrix, bluetoothManager, context)
                 }
             },
             enabled = isBluetoothConnected
@@ -110,7 +110,7 @@ fun SendButton(
 }
 
 
-suspend fun handshakeSendSinglePixelsOneByOne(
+fun handshakeSendSinglePixelsOneByOne(
     matrix: MutableState<RGBMatrix>,
     bluetoothManager: BluetoothManager,
     context: Context // Add context to show Toast messages
@@ -119,7 +119,7 @@ suspend fun handshakeSendSinglePixelsOneByOne(
     val timeoutMillis = 5000L
     var retryCount = 0
 
-    suspend fun performHandshake(): Boolean {
+    fun performHandshake(): Boolean {
         while (retryCount < retryLimit && bluetoothManager.isConnected()) {
             bluetoothManager.sendData("syn")
             Log.d("SendButton", "SYN sent, waiting for SYN-ACK...")
@@ -143,7 +143,7 @@ suspend fun handshakeSendSinglePixelsOneByOne(
         return false
     }
 
-    suspend fun sendMatrixPixelByPixel(): Boolean {
+    fun sendMatrixPixelByPixel(): Boolean {
         for (row in 0 until 1 * matrix.value.height) {
             for (column in 0 until matrix.value.width) {
                 var tryCount = 0
@@ -167,7 +167,7 @@ suspend fun handshakeSendSinglePixelsOneByOne(
         return true
     }
 
-    suspend fun terminateConnection() {
+    fun terminateConnection() {
         bluetoothManager.sendData("fin")
         Log.d("SendButton", "FIN sent, waiting for FIN-ACK...")
 //        Toast.makeText(context, "FIN sent, waiting for FIN-ACK...", Toast.LENGTH_SHORT).show()
@@ -188,6 +188,257 @@ suspend fun handshakeSendSinglePixelsOneByOne(
         Toast.makeText(context, "Failed to send matrix data.", Toast.LENGTH_LONG).show()
     }
 }
+
+fun handshakeSendSinglePixelRows(
+    matrix: MutableState<RGBMatrix>,
+    bluetoothManager: BluetoothManager,
+    context: Context // Add context to show Toast messages
+) {
+    val retryLimit = 3
+    val timeoutMillis = 5000L
+    var retryCount = 0
+
+    fun performHandshake(): Boolean {
+        while (retryCount < retryLimit && bluetoothManager.isConnected()) {
+            bluetoothManager.sendData("syn")
+            Log.d("SendButton", "SYN sent, waiting for SYN-ACK...")
+//            Toast.makeText(context, "SYN sent, waiting for SYN-ACK...", Toast.LENGTH_SHORT).show()
+
+            val response = bluetoothManager.receiveData(timeoutMillis)
+            if (response == "syn-ack") {
+                bluetoothManager.sendData("ack")
+                Log.d("SendButton", "ACK sent. Handshake successful.")
+                Toast.makeText(context, "ACK sent. Handshake successful.", Toast.LENGTH_SHORT).show()
+                return true
+            } else {
+                retryCount++
+                Log.d("SendButton", "SYN-ACK not received, retrying... ($retryCount/$retryLimit)")
+//                Toast.makeText(context, "SYN-ACK not received, retrying... ($retryCount/$retryLimit)", Toast.LENGTH_SHORT).show()
+                Thread.sleep(1000)
+            }
+        }
+        Log.d("SendButton", "Failed to establish connection after $retryLimit attempts.")
+        Toast.makeText(context, "Failed to establish connection after $retryLimit attempts.", Toast.LENGTH_LONG).show()
+        return false
+    }
+
+    fun sendMatrixPixelRows(): Boolean {
+        for (row in 0 until 1 * matrix.value.height) {
+            var tryCount = 0
+            var rowAck = "ROW-FAIL"
+
+            while (rowAck != "ROW-SUCCESS" && tryCount < 20) {
+                sendRow(matrix, row, bluetoothManager, "data:")
+                rowAck = bluetoothManager.receiveData(timeoutMillis).toString()
+                tryCount++
+        //                    Thread.sleep(1)
+            }
+            if(rowAck != "PIXEL-SUCCESS") {
+                Log.d("SendButton", "Failed to send row: $row, received: $rowAck")
+                return false
+            }
+//            Toast.makeText(context, "Sent row $row", Toast.LENGTH_SHORT).show()
+        }
+        return true
+    }
+
+    fun terminateConnection() {
+        bluetoothManager.sendData("fin")
+        Log.d("SendButton", "FIN sent, waiting for FIN-ACK...")
+//        Toast.makeText(context, "FIN sent, waiting for FIN-ACK...", Toast.LENGTH_SHORT).show()
+
+        val finAck = bluetoothManager.receiveData(timeoutMillis)
+        if (finAck == "fin-ack") {
+            Log.d("SendButton", "FIN-ACK received, connection terminated.")
+            Toast.makeText(context, "Data sent successfully and connection terminated.", Toast.LENGTH_LONG).show()
+        } else {
+            Log.d("SendButton", "Failed to terminate connection: FIN-ACK not received.")
+            Toast.makeText(context, "Failed to terminate connection.", Toast.LENGTH_LONG).show()
+        }
+    }
+
+    if (performHandshake() && sendMatrixPixelRows()) {
+        terminateConnection()
+    } else {
+        Toast.makeText(context, "Failed to send matrix data.", Toast.LENGTH_LONG).show()
+    }
+}
+
+
+
+fun handshakeSendPixelHalfRows(
+    matrix: MutableState<RGBMatrix>,
+    bluetoothManager: BluetoothManager,
+    context: Context // Add context to show Toast messages
+) {
+    val retryLimit = 3
+    val timeoutMillis = 5000L
+    var retryCount = 0
+
+    fun performHandshake(): Boolean {
+        while (retryCount < retryLimit && bluetoothManager.isConnected()) {
+            bluetoothManager.sendData("syn")
+            Log.d("SendButton", "SYN sent, waiting for SYN-ACK...")
+//            Toast.makeText(context, "SYN sent, waiting for SYN-ACK...", Toast.LENGTH_SHORT).show()
+
+            val response = bluetoothManager.receiveData(timeoutMillis)
+            if (response == "syn-ack") {
+                bluetoothManager.sendData("ack")
+                Log.d("SendButton", "ACK sent. Handshake successful.")
+                Toast.makeText(context, "ACK sent. Handshake successful.", Toast.LENGTH_SHORT).show()
+                return true
+            } else {
+                retryCount++
+                Log.d("SendButton", "SYN-ACK not received, retrying... ($retryCount/$retryLimit)")
+//                Toast.makeText(context, "SYN-ACK not received, retrying... ($retryCount/$retryLimit)", Toast.LENGTH_SHORT).show()
+                Thread.sleep(1000)
+            }
+        }
+        Log.d("SendButton", "Failed to establish connection after $retryLimit attempts.")
+        Toast.makeText(context, "Failed to establish connection after $retryLimit attempts.", Toast.LENGTH_LONG).show()
+        return false
+    }
+
+    fun sendMatrixRows(): Boolean {
+        for (row in 0 until matrix.value.height) {
+            Log.d("SendButton", "Sending row: $row ")
+            Toast.makeText(context, "Sending row: $row", Toast.LENGTH_SHORT).show()
+
+            for (part in 0 until 2) {
+                var tryCount = 0
+                var rowAck = "ROW-FAIL"
+
+                while (rowAck != "ROW-SUCCESS" && tryCount < 5) {
+                    sendHalfRow(matrix, row, part, bluetoothManager, "data:")
+                    rowAck = bluetoothManager.receiveData(timeoutMillis).toString()
+                    tryCount++
+                    Thread.sleep(3000)
+                }
+
+                if(rowAck != "ROW-SUCCESS") {
+                    Log.d("SendButton", "Failed to send row $row, part: $part, received: $rowAck")
+                    return false
+                }
+            }
+        }
+        return true
+    }
+
+    fun terminateConnection() {
+        bluetoothManager.sendData("fin")
+        Log.d("SendButton", "FIN sent, waiting for FIN-ACK...")
+//        Toast.makeText(context, "FIN sent, waiting for FIN-ACK...", Toast.LENGTH_SHORT).show()
+
+        val finAck = bluetoothManager.receiveData(timeoutMillis)
+        if (finAck == "fin-ack") {
+            Log.d("SendButton", "FIN-ACK received, connection terminated.")
+            Toast.makeText(context, "Data sent successfully and connection terminated.", Toast.LENGTH_LONG).show()
+        } else {
+            Log.d("SendButton", "Failed to terminate connection: FIN-ACK not received.")
+            Toast.makeText(context, "Failed to terminate connection.", Toast.LENGTH_LONG).show()
+        }
+    }
+
+    if (performHandshake() && sendMatrixRows()) {
+        terminateConnection()
+    } else {
+        Toast.makeText(context, "Failed to send matrix data.", Toast.LENGTH_LONG).show()
+    }
+}
+
+
+fun handshakeSendPixelQaurterRows(
+    matrix: MutableState<RGBMatrix>,
+    bluetoothManager: BluetoothManager,
+    context: Context // Add context to show Toast messages
+) {
+    val retryLimit = 3
+    val timeoutMillis = 5000L
+    var retryCount = 0
+
+    fun performHandshake(): Boolean {
+        while (retryCount < retryLimit && bluetoothManager.isConnected()) {
+            bluetoothManager.sendData("syn")
+            Log.d("SendButton", "SYN sent, waiting for SYN-ACK...")
+//            Toast.makeText(context, "SYN sent, waiting for SYN-ACK...", Toast.LENGTH_SHORT).show()
+
+            val response = bluetoothManager.receiveData(timeoutMillis)
+            if (response == "syn-ack") {
+                bluetoothManager.sendData("ack")
+                Log.d("SendButton", "ACK sent. Handshake successful.")
+                Toast.makeText(context, "ACK sent. Handshake successful.", Toast.LENGTH_SHORT).show()
+                return true
+            } else {
+                retryCount++
+                Log.d("SendButton", "SYN-ACK not received, retrying... ($retryCount/$retryLimit)")
+//                Toast.makeText(context, "SYN-ACK not received, retrying... ($retryCount/$retryLimit)", Toast.LENGTH_SHORT).show()
+                Thread.sleep(1000)
+            }
+        }
+        Log.d("SendButton", "Failed to establish connection after $retryLimit attempts.")
+        Toast.makeText(context, "Failed to establish connection after $retryLimit attempts.", Toast.LENGTH_LONG).show()
+        return false
+    }
+
+    fun sendMatrixRows(): Boolean {
+        for (row in 0 until matrix.value.height) {
+            Log.d("SendButton", "Sending row: $row ")
+//            Toast.makeText(context, "Sending row: $row", Toast.LENGTH_SHORT).show()
+
+            for (part in 0 until 4) {
+                var tryCount = 0
+                var rowAck = "ROW-FAIL"
+
+                while (rowAck != "ROW-SUCCESS" && tryCount < 20) {
+                    sendQuarterRow(matrix, row, part, bluetoothManager, "data:")
+                    rowAck = bluetoothManager.receiveData(timeoutMillis).toString()
+                    tryCount++
+                    Thread.sleep(5) // for testing
+                }
+
+                if(rowAck != "ROW-SUCCESS") {
+                    Log.d("SendButton", "Failed to send row $row, part: $part, received: $rowAck")
+                    return false
+                }
+            }
+        }
+        return true
+    }
+
+    fun terminateConnection() {
+        retryCount = 0
+        val response = ""
+        while (retryCount < retryLimit && bluetoothManager.isConnected() && response != "fin-ack") {
+            bluetoothManager.sendData("fin")
+            Log.d("SendButton", "FIN sent, waiting for FIN-ACK...")
+//        Toast.makeText(context, "FIN sent, waiting for FIN-ACK...", Toast.LENGTH_SHORT).show()
+
+            val response = bluetoothManager.receiveData(timeoutMillis)
+            if (response == "fin-ack") {
+                Log.d("SendButton", "FIN-ACK received, connection terminated.")
+                Toast.makeText(context, "Data sent successfully and connection terminated.", Toast.LENGTH_SHORT).show()
+                break
+            } else {
+                Log.d("SendButton", "Failed to terminate connection: FIN-ACK not received.")
+            }
+            retryCount++
+            Thread.sleep(100)
+        }
+        if (retryCount == retryLimit) {
+            Log.d("SendButton", "Failed to terminate connection after $retryLimit attempts.")
+            Toast.makeText(context, "Failed to terminate connection after $retryLimit attempts.", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    if (performHandshake() && sendMatrixRows()) {
+        terminateConnection()
+    } else {
+        Toast.makeText(context, "Failed to send matrix data.", Toast.LENGTH_LONG).show()
+    }
+}
+
+
+
 
 fun sendColor(color: String, bluetoothManager: BluetoothManager) {
     if (color == "red") {
