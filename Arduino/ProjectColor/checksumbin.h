@@ -1,5 +1,5 @@
 //1_PIXEL * 4_bytes(position,R,G,B) * 8bits(per Byte) + 4bits(1Byte for checksum) + "\0"
-#define PIXEL_BINARY_CHAR_SIZE 37 
+#define PIXEL_BINARY_CHAR_SIZE 36  
 
 void Ones_complement(char* data) {
     for (int i = 0; i < strlen(data); i++) {

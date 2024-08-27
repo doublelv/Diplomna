@@ -172,7 +172,7 @@ int binaryToDecimal(const char* binaryString, size_t length) {
 }
 bool checkCheckSum(char* message) {
 
-  char binaryData[PIXEL_BINARY_CHAR_SIZE];
+  char binaryData[PIXEL_BINARY_CHAR_SIZE + 1];
   hexData_to_binaryData(message, binaryData);
 
   char result[5];
