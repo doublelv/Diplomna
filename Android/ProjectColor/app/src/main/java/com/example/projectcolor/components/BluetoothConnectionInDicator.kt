@@ -37,6 +37,37 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import com.example.projectcolor.bluetooth.BluetoothManager
 
+
+/**
+ * BluetoothConnectionIndicator is a composable function that provides a user interface element for managing
+ * Bluetooth connectivity within the application. It allows users to connect to or disconnect from a Bluetooth device
+ * and displays the connection status.
+ *
+ * The function includes:
+ *
+ * - `modifier`: A `Modifier` for customizing the appearance and layout of the component.
+ * - `bluetoothManager`: An instance of `BluetoothManager` to handle Bluetooth operations.
+ * - `isConnected`: A `Boolean` representing the current connection status (true if connected, false otherwise).
+ * - `onConnectClick`: A callback function that is invoked when a connection to a Bluetooth device is requested.
+ * - `onDisconnectClick`: A callback function that is invoked when a disconnection from a Bluetooth device is requested.
+ *
+ * The UI is structured within a `Box` composable that serves as a clickable area. The background color of the box
+ * changes based on the connection status (`Green` for connected, `Red` for disconnected). The box contains:
+ *
+ * - A `Text` element displaying "Connected" or "Disconnected" based on the connection status.
+ * - A secondary `Text` element providing a prompt to the user ("Tap to disconnect" or "Tap to connect").
+ * - An optional error message if a connection attempt fails.
+ *
+ * When the box is clicked, the function checks the Bluetooth status:
+ *
+ * - If connected, it triggers the `onDisconnectClick` callback and cancels the connection using `bluetoothManager`.
+ * - If disconnected, it checks for Bluetooth support, permissions, and enables Bluetooth if necessary. It then
+ *   starts device discovery and shows a dialog with available devices for connection.
+ *
+ * The `DevicesDialog` is displayed when `showDevicesDialog` is true, allowing users to select and connect to a
+ * Bluetooth device. The function handles the connection process, updating the UI to reflect loading or connection
+ * errors as needed.
+ */
 @SuppressLint("MissingPermission")
 @Composable
 fun BluetoothConnectionIndicator(
@@ -140,6 +171,30 @@ fun BluetoothConnectionIndicator(
     }
 }
 
+
+/**
+ * DevicesDialog is a composable function that displays a dialog containing a list of paired and discovered Bluetooth
+ * devices, allowing the user to select a device for connection.
+ *
+ * The function includes:
+ *
+ * - `pairedDevices`: A set of `BluetoothDevice` objects representing devices that are already paired with the host.
+ * - `discoveredDevices`: A set of `BluetoothDevice` objects representing devices that have been discovered but are
+ *   not yet paired.
+ * - `onDismissRequest`: A callback function that is invoked when the dialog is dismissed.
+ * - `onConnectClick`: A callback function that is invoked when the user selects a device to connect to.
+ *
+ * The dialog is structured using a `Column` composable that contains:
+ *
+ * - A header text "Paired Devices" to label the list of paired devices.
+ * - A `LazyColumn` displaying the paired devices, each rendered by the `DeviceItem` composable.
+ * - A header text "Available Devices" to label the list of discovered devices.
+ * - A `LazyColumn` (currently commented out) intended to display the discovered devices, each rendered by
+ *   the `DeviceItem` composable.
+ *
+ * This dialog provides a user-friendly interface for selecting Bluetooth devices for connection, facilitating
+ * interaction with both paired and newly discovered devices.
+ */
 @Composable
 fun DevicesDialog(
     pairedDevices: Set<BluetoothDevice>,
@@ -174,6 +229,24 @@ fun DevicesDialog(
     }
 }
 
+
+/**
+ * DeviceItem is a composable function that displays information about a single Bluetooth device, along with a
+ * button to initiate a connection to that device.
+ *
+ * The function includes:
+ *
+ * - `device`: A `BluetoothDevice` object representing the Bluetooth device to be displayed.
+ * - `onConnectClick`: A callback function that is invoked when the user clicks the "Connect" button.
+ *
+ * The UI is structured within a `Row` composable that contains:
+ *
+ * - A `Column` displaying the device's name (or "Unknown Device" if the name is not available) and its address.
+ * - A `Button` that, when clicked, triggers the `onConnectClick` callback with the associated device.
+ *
+ * This function provides a clear and concise display of Bluetooth device information, along with a straightforward
+ * method for initiating a connection, making it an essential component within a device selection dialog.
+ */
 @SuppressLint("MissingPermission")
 @Composable
 fun DeviceItem(device: BluetoothDevice, onConnectClick: (BluetoothDevice) -> Unit) {
