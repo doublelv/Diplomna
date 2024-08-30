@@ -30,6 +30,36 @@ import java.io.InputStream
 import java.io.OutputStream
 import java.util.UUID
 
+/**
+ * BluetoothManager is a class that provides comprehensive management of Bluetooth operations, including discovery,
+ * connection, data transmission, and reception. It is designed to simplify Bluetooth interactions in Android
+ * applications by abstracting complex tasks into easy-to-use methods.
+ *
+ * **Constructor Parameters:**
+ * - `context`: The Android `Context` used for accessing system services and resources.
+ *
+ * **Fields:**
+ * - `bluetoothAdapter`: The system's Bluetooth adapter, which provides the core Bluetooth functionality.
+ * - `_discoveredDevices`: A `MutableLiveData` holding a set of discovered Bluetooth devices. This is observed by the
+ *   UI to display available devices.
+ * - `discoveredDevices`: A `LiveData` that exposes the discovered devices to observers.
+ * - `discoveredDevicesSet`: A mutable set of `BluetoothDevice` objects used internally to keep track of discovered devices.
+ * - `myUUID`: A unique identifier for creating RFCOMM Bluetooth sockets.
+ * - `connectJob`, `sendJob`: `Coroutine` jobs managing connection and data transmission, respectively.
+ * - `connectionTimeout`: The timeout period for establishing a Bluetooth connection.
+ * - `bluetoothSocket`: The `BluetoothSocket` used for communication with a connected device.
+ * - `outputStream`, `inputStream`: Streams for sending and receiving data through the Bluetooth socket.
+ *
+ * **Companion Object:**
+ * - `TAG`: A constant used for logging.
+ *
+ * **Private Inner Classes:**
+ * - `discoveryReceiver`: A `BroadcastReceiver` that handles device discovery results by adding found devices
+ *   to the `discoveredDevicesSet`.
+ *
+ * This class handles the complexities of Bluetooth interactions, providing an easy-to-use interface for
+ * connecting to, communicating with, and managing Bluetooth devices in an Android application.
+ */
 @SuppressLint("MissingPermission")
 class BluetoothManager(private val context: Context) {
 
@@ -62,14 +92,22 @@ class BluetoothManager(private val context: Context) {
         }
     }
 
+    /**
+    ** Methods: **
+    */
+
+    /** `hasBluetoothSupport()`: Checks if the device supports Bluetooth. */
     fun hasBluetoothSupport(): Boolean {
         return bluetoothAdapter != null
     }
 
+    /** `isBluetoothEnabled()`: Checks if Bluetooth is currently enabled on the device. */
     fun isBluetoothEnabled(): Boolean {
         return bluetoothAdapter?.isEnabled ?: false
     }
 
+    /** `enableBluetooth(launcher: ActivityResultLauncher<Intent>)`: Launches an intent to enable Bluetooth if it
+     *   is currently disabled. */
     fun enableBluetooth(launcher: ActivityResultLauncher<Intent>) {
         if (bluetoothAdapter?.isEnabled == false) {
             val enableBtIntent = Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE)
@@ -77,6 +115,8 @@ class BluetoothManager(private val context: Context) {
         }
     }
 
+    /** `hasPermissions()`: Verifies if the necessary Bluetooth permissions are granted, taking into account the
+     *   Android version. */
     fun hasPermissions(): Boolean {
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             context.checkSelfPermission(Manifest.permission.BLUETOOTH_SCAN) == PackageManager.PERMISSION_GRANTED &&
@@ -87,6 +127,9 @@ class BluetoothManager(private val context: Context) {
         }
     }
 
+
+    /** `requestPermissions(activity: Activity, requestCode: Int)`: Requests the necessary Bluetooth permissions
+     *   from the user, using the appropriate permissions for the Android version. */
     fun requestPermissions(activity: Activity, requestCode: Int) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             activity.requestPermissions(
@@ -109,6 +152,9 @@ class BluetoothManager(private val context: Context) {
         }
     }
 
+
+    /** `getPairedDevices()`: Returns a set of paired Bluetooth devices. Throws a `SecurityException` if the required
+     *   permissions are not granted. */
     @SuppressLint("MissingPermission")
     fun getPairedDevices(): Set<BluetoothDevice> {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && !hasPermissions()) {
@@ -117,6 +163,8 @@ class BluetoothManager(private val context: Context) {
         return bluetoothAdapter?.bondedDevices ?: emptySet()
     }
 
+    /** `startDiscovery()`: Initiates the Bluetooth device discovery process, clearing previous results and updating
+     *   the observed devices. Stops discovery automatically after 10 seconds. */
     fun startDiscovery() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && !hasPermissions()) {
             throw SecurityException("BLUETOOTH_SCAN permission required")
@@ -137,6 +185,9 @@ class BluetoothManager(private val context: Context) {
         }
     }
 
+
+    /** `stopDiscovery()`: Stops the ongoing Bluetooth device discovery process and unregisters the discovery
+     *   receiver. */
     private fun stopDiscovery() {
         bluetoothAdapter?.let { adapter ->
             if (adapter.isDiscovering) {
@@ -150,6 +201,8 @@ class BluetoothManager(private val context: Context) {
         }
     }
 
+    /** `pairDevice(device: BluetoothDevice)`: Initiates the pairing process with a given Bluetooth device if it is
+     *   not already bonded. */
     @SuppressLint("MissingPermission")
     fun pairDevice(device: BluetoothDevice) {
         if (device.bondState != BluetoothDevice.BOND_BONDED) {
@@ -157,6 +210,9 @@ class BluetoothManager(private val context: Context) {
         }
     }
 
+
+    /** `connectToDevice(device: BluetoothDevice, onConnectionResult: (Boolean) -> Unit)`: Attempts to connect to a
+     *   specified Bluetooth device. The result of the connection attempt is provided through a callback. */
     fun connectToDevice(device: BluetoothDevice, onConnectionResult: (Boolean) -> Unit) {
         connectJob?.cancel() // Cancel previous job if any
 
@@ -198,10 +254,13 @@ class BluetoothManager(private val context: Context) {
         }
     }
 
+    /** `isConnected()`: Returns `true` if a Bluetooth connection is currently established. */
     fun isConnected(): Boolean {
         return bluetoothSocket?.isConnected ?: false
     }
 
+    /** `sendData(message: String)`: Sends a string message to the connected Bluetooth device. Logs an error if the
+     *   socket is not connected. */
     fun sendData(message: String) {
         if (bluetoothSocket == null || bluetoothSocket?.isConnected == false) {
             Log.e(TAG, "Cannot send data: socket is not connected")
@@ -217,6 +276,8 @@ class BluetoothManager(private val context: Context) {
         }
     }
 
+    /** `receiveData(timeoutMillis: Long = 5000L)`: Waits for data from the connected Bluetooth device within a
+     *   specified timeout period. Returns the received data as a string or `null` if no data is received. */
     fun receiveData(timeoutMillis: Long = 5000L): String? {
         return runBlocking {
             val socket = bluetoothSocket
@@ -249,7 +310,8 @@ class BluetoothManager(private val context: Context) {
         }
     }
 
-
+    /** `cancelConnection()`: Cancels any ongoing connection or data transmission, closes the Bluetooth socket and
+     *   associated streams, and cleans up resources. */
     fun cancelConnection() {
         try {
             connectJob?.cancel()
@@ -266,6 +328,8 @@ class BluetoothManager(private val context: Context) {
         }
     }
 
+    /** `BluetoothSocket?.closeSilently()`: Safely closes the Bluetooth socket, logging any errors that occur during
+     *   the process. */
     private fun BluetoothSocket?.closeSilently() {
         try {
             this?.close()

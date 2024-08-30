@@ -26,7 +26,36 @@ import androidx.compose.ui.unit.dp
 import com.example.projectcolor.PixelData
 import com.example.projectcolor.RGBMatrix
 
-
+/**
+ * PixelGrid is a Composable function that displays a grid of interactive pixels, allowing users to "paint" each pixel
+ * by selecting a color and clicking on the respective grid cell. The grid's size and color state are customizable, and
+ * the painted colors are stored in an RGB matrix.
+ *
+ * **Parameters:**
+ *
+ * - `modifier`: A `Modifier` that can be used to customize the appearance and layout of the grid. The default value is `Modifier`.
+ * - `size`: An `Int` representing the size of the grid (both width and height in number of pixels). The default value is `16`.
+ * - `selectedColor`: A `State<Color?>` representing the currently selected color for painting the pixels. If `null`, the
+ *   default color `Black` is used.
+ * - `matrix`: A `MutableState<RGBMatrix>` representing the underlying data structure that holds the color values of the
+ *   pixels in the grid.
+ *
+ * **UI Structure:**
+ *
+ * - The function creates a `Box` composable to define the grid's outer boundary, adding padding, aspect ratio, rounded corners,
+ *   and a white border.
+ *
+ * - Inside the `Box`, a `Column` is used to arrange `Row` composables vertically, where each `Row` represents a line of pixels.
+ *
+ * - Each `Row` contains a series of `PixelButton` composables, one for each pixel in the grid, arranged horizontally.
+ *
+ * - The grid size is defined by the `size` parameter, resulting in a `size x size` grid. The `PixelButton` for each
+ *   cell is generated based on the `column` and `row` indices, and the button's color is dynamically updated
+ *   when clicked, using the selected color.
+ *
+ * This function provides a simple and flexible way to create a customizable, interactive pixel grid, typically used
+ * in pixel art applications or educational tools for learning about colors and grids.
+ */
 @Composable
 fun PixelGrid(
     modifier: Modifier = Modifier,
@@ -72,6 +101,33 @@ fun PixelGrid(
     }
 }
 
+/**
+ * PixelButton is a Composable function that represents an individual button within a pixel grid, allowing users to
+ * "paint" a specific pixel by selecting a color and clicking the button.
+ *
+ * **Parameters:**
+ *
+ * - `modifier`: A `Modifier` to apply to this button. It can be used to customize the appearance and layout of the button. The default value is `Modifier`.
+ * - `column`: An `Int` representing the column index of this pixel within the grid.
+ * - `row`: An `Int` representing the row index of this pixel within the grid.
+ * - `selectedColor`: A nullable `Color` that represents the currently selected color for painting. If `null`, the default color `Black` is used.
+ * - `matrix`: A `MutableState<RGBMatrix>` that holds the RGB values of all pixels in the grid, allowing the function to update the color of this specific pixel.
+ *
+ * **Functionality:**
+ *
+ * - The function maintains a mutable state `buttonColor` which initially is set to `Color.Black`.
+ *
+ * - When the button is clicked, it updates `buttonColor` to the currently selected color, or `Color.Black` if no color is selected.
+ *
+ * - The function logs the selected color for debugging purposes.
+ *
+ * - The color value is then converted into a `PixelData` object containing the red, green, and blue components of the color.
+ *
+ * - The `PixelData` object is stored in the `matrix` at the specified `column` and `row` indices using the `setPixel` function.
+ *
+ * - The button's appearance is updated to reflect the `buttonColor`, and the button is styled with a rectangular shape by
+ *   setting the corner radius to `0.dp`.
+ */
 
 @Composable
 fun PixelButton(
