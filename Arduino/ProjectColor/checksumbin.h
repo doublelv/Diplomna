@@ -9,7 +9,21 @@
 #define QUARTER_ROW_BINARY_CHAR_SIZE 136 //4_PIXEL * 4_bytes(position,R,G,B) * 8chars(per Byte) + 8chars(1Byte for checksum)
 
 
-
+/**
+ * Ones_complement is a function that computes the one's complement of a given binary string. The function inverts each bit in the string, changing '0' to '1' and '1' to '0'.
+ *
+ * **Parameters:**
+ *
+ * - `data`: A `char*` representing the binary string for which the one's complement will be calculated. The string is modified in place.
+ *
+ * **Functionality:**
+ *
+ * - The function iterates over each character in the `data` string.
+ * - For each character, it checks if the character is '0' or '1' and then inverts it.
+ * - The modified string is the one's complement of the original input, and the inversion is done in place.
+ *
+ * - This function is typically used in checksum calculations to ensure data integrity by helping verify the transmitted data.
+ */
 void Ones_complement(char* data) {
     for (int i = 0; i < strlen(data); i++) {
         if (data[i] == '0')
@@ -19,8 +33,24 @@ void Ones_complement(char* data) {
     }
 }
 
-// Function to return the checksum value of
-// the given string when divided in K size blocks
+/**
+ * checkSum is a function that calculates the checksum of a binary string by dividing it into blocks of a specified size, performing binary addition on each block, and then applying one's complement.
+ * The checksum helps ensure data integrity during transmission.
+ *
+ * **Parameters:**
+ *
+ * - `data`: A `char*` representing the binary string for which the checksum will be calculated. The string may be padded to fit the block size.
+ * - `block_size`: An `int` specifying the size of each block (i.e., the number of bits) used in the checksum calculation.
+ * - `result`: A `char*` where the calculated checksum will be stored. The checksum is the one's complement of the binary addition result.
+ *
+ * **Functionality:**
+ *
+ * - The function first checks if the length of `data` is divisible by `block_size`. If not, the string is padded with leading zeros to make it so.
+ * - It then initializes the `result` with the first block of data.
+ * - The function performs binary addition of the blocks, updating the `result` with each addition.
+ * - If a carry is generated during the addition, it is handled and propagated accordingly.
+ * - Finally, the function applies one's complement to the `result`, ensuring that it represents the checksum of the input `data`.
+ */
 void checkSum(char* data, int block_size, char* result) {
     // Check data size is divisible by block_size
     int n = strlen(data);
@@ -72,6 +102,24 @@ void checkSum(char* data, int block_size, char* result) {
     Ones_complement(result);
 }
 
+/**
+ * result_checker is a function that verifies whether a given checksum result is valid by checking if all bits in the result are zero.
+ *
+ * **Parameters:**
+ *
+ * - `result`: A `char*` representing the binary checksum result that needs to be verified.
+ * - `block_size`: An `int` specifying the size of the block (i.e., the number of bits) to be checked.
+ *
+ * **Returns:**
+ *
+ * - `bool`: Returns `true` if all bits in the `result` are '0', indicating a valid checksum. Otherwise, returns `false`.
+ *
+ * **Functionality:**
+ *
+ * - The function iterates over each bit in the `result` string.
+ * - If any bit is found to be non-zero, the function returns `false`.
+ * - If all bits are '0', the function returns `true`, indicating that the checksum is valid and the data integrity is intact.
+ */
 bool result_checker(char* result, int block_size) {
 	for (size_t i = 0; i < block_size; i++)
 	{
@@ -83,7 +131,23 @@ bool result_checker(char* result, int block_size) {
 	return true;
 }
 
-
+/**
+ * hexData_to_binaryData is a function that converts a hexadecimal string into its equivalent binary string representation. Each hex digit is translated into a 4-bit binary sequence.
+ *
+ * **Parameters:**
+ *
+ * - `hexData`: A `const char*` representing the hexadecimal data to be converted to binary.
+ * - `binaryData`: A `char*` where the resulting binary string will be stored. The binary string is constructed by appending 4-bit binary equivalents of each hex digit.
+ *
+ * **Functionality:**
+ *
+ * - The function initializes `binaryData` as an empty string.
+ * - It then iterates over each character in `hexData`, appending the corresponding 4-bit binary string to `binaryData`.
+ * - The function handles both uppercase and lowercase hexadecimal digits.
+ * - If an invalid hexadecimal character is encountered, the function appends "????" to `binaryData` to indicate an error.
+ *
+ * - This function is typically used when binary data is needed for further processing or transmission, but the data is initially provided in hexadecimal format.
+ */
 void hexData_to_binaryData(const char* hexData, char* binaryData) {
     // Initialize the binary string to an empty string
     binaryData[0] = '\0';
