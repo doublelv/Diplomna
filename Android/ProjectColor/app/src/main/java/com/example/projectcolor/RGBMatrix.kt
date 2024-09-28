@@ -49,7 +49,7 @@ data class PixelData(
 class RGBMatrix (
     val width: Int,
     val height: Int,
-    ) {
+) {
 
     private val data: Array<PixelData> = Array(height * width) { PixelData(0f, 0f, 0f) }
 

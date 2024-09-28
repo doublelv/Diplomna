@@ -249,7 +249,10 @@ fun DevicesDialog(
  */
 @SuppressLint("MissingPermission")
 @Composable
-fun DeviceItem(device: BluetoothDevice, onConnectClick: (BluetoothDevice) -> Unit) {
+fun DeviceItem(
+    device: BluetoothDevice,
+    onConnectClick: (BluetoothDevice) -> Unit
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
