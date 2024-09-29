@@ -4,7 +4,7 @@
 #include "checksumbin.h"
 
 #define MATRIX_SIZE 16
-#define LEDS_DATA_PIN 12
+#define LEDS_DATA_PIN 11
 #define NUM_LEDS 256
 #define BLOCK_SIZE 8
 
