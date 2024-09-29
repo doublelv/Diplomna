@@ -15,6 +15,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.tooling.preview.Preview
 import com.example.projectcolor.RGBMatrix
 import com.example.projectcolor.bluetooth.BluetoothManager
 
@@ -49,7 +50,7 @@ fun MainScreen() {
     val bluetoothManager = remember { BluetoothManager(context) }
     val pixelGridMatrix = remember { mutableStateOf(RGBMatrix(16, 16)) }
     var isConnected by remember { mutableStateOf(false) }
-    val selectedColor = remember { mutableStateOf(Color.Black) } // State<Color>
+    val selectedColor = remember { mutableStateOf(Color.Red) } // State<Color>
 
     Scaffold { innerPadding ->
         Column(
@@ -102,4 +103,12 @@ fun MainScreen() {
             )
         }
     }
+}
+
+@Preview(showBackground = true,
+    showSystemUi = true
+)
+@Composable
+fun MainScreenPreview() {
+    MainScreen()
 }

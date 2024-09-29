@@ -22,6 +22,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.projectcolor.PixelData
 import com.example.projectcolor.RGBMatrix
@@ -149,6 +150,17 @@ fun PixelButton(
             matrix.value.setPixel(column, row, pixel)
         },
         colors = ButtonDefaults.buttonColors(containerColor = buttonColor),
-        shape = RoundedCornerShape(0.dp)
+        shape = RoundedCornerShape(0.dp),
+//        border = ButtonDefaults.outlinedButtonBorder
     ) {}
+}
+
+
+@Preview
+@Composable
+fun PixelGridPreview() {
+    val selectedColor = remember { mutableStateOf<Color?>(null) }
+    val matrix = remember { mutableStateOf(RGBMatrix(16, 16)) }
+    PixelGrid(selectedColor = selectedColor, matrix = matrix)
+
 }

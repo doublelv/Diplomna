@@ -215,11 +215,11 @@ fun DevicesDialog(
                 }
             }
             Spacer(modifier = Modifier.height(16.dp))
-            Text(
-                text = "Available Devices",
-                style = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier.padding(vertical = 8.dp)
-            )
+//            Text(
+//                text = "Available Devices",
+//                style = MaterialTheme.typography.bodyMedium,
+//                modifier = Modifier.padding(vertical = 8.dp)
+//            )
 //            LazyColumn(modifier = Modifier.fillMaxWidth()) {
 //                items(discoveredDevices.toList()) { device ->
 //                    DeviceItem(device = device, onConnectClick = onConnectClick)
